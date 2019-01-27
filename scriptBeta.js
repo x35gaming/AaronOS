@@ -39,6 +39,33 @@ function darkSwitch(light, dark){
         return light;
     }
 }
+var autoMobile = 0;
+function checkMobileSize(){
+    if(autoMobile){
+        if(!mobileMode && (screen.width < 768 || parseInt(getId('monitor').style.width) < 768)){
+            setMobile(1);
+        }else if(mobileMode && (screen.width >= 768 && parseInt(getId('monitor').style.width) >= 768)){
+            setMobile(0);
+        }
+    }
+}
+var mobileMode = 0;
+function mobileSwitch(no, yes){
+    if(mobileMode){
+        return yes;
+    }else{
+        return no;
+    }
+}
+function setMobile(type){
+    if(type){
+        mobileMode = 1;
+        getId('monitor').classList.add('mobileMode');
+    }else{
+        mobileMode = 0;
+        getId('monitor').classList.remove('mobileMode');
+    }
+}
 
 // sanitize a string to make html safe
 function cleanStr(str){
@@ -97,8 +124,6 @@ function checkMonitorMovement(){
     requestAnimationFrame(checkMonitorMovement);
 }
 requestAnimationFrame(checkMonitorMovement);
-
-var mobileMode = false;
 
 /*
     // each section will be separated by newlines and begin with a comment like this
@@ -1064,6 +1089,9 @@ for(i = 1000; i < 5500; i += 500){
 function failBattery(){
     if(cpuBattery === undefined || cpuBattery.level === ' ? ' || objLength(cpuBattery) === 0){
         doLog('Battery setup aborted. [' + [(cpuBattery === undefined), (cpuBattery.level === ' ? '), (objLength(cpuBattery) === 0)] + ']', '#F00');
+        if(!USERFILES.WIDGETLIST){
+            removeWidget('battery', 1);
+        }
     }else if(!batterySetupSuccess){
         doLog('Battery setup success! [' + [(cpuBattery === undefined), (cpuBattery.level === ' ? '), (objLength(cpuBattery) === 0)] + ']', '#FF0');
         batterySetupSuccess = 1;
@@ -1230,6 +1258,16 @@ function logLiveElement(str){
 function makeLiveElement(str){
     return '<span class="liveElement" liveVar="' + str + '"></span>';
 }
+// list of pinned apps
+var pinnedApps = [];
+function pinApp(app){
+    if(pinnedApps.indexOf(app) === -1){
+        pinnedApps.push(app);
+    }else{
+        pinnedApps.splice(pinnedApps.indexOf(app), 1);
+    }
+    apps.savemaster.vars.save('APP_STN_PINNEDAPPS', JSON.stringify(pinnedApps), 1);
+}
 // Application class
 m('init Application class');
 var apps = {};
@@ -1308,79 +1346,39 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
             },
             setDims: function(xOff, yOff, xSiz, ySiz, ignoreDimsSet){
                 d(2, 'Setting dims of window.');
-                if(!mobileMode){
-                    if(!this.fullscreen){
-                        if(xOff === "auto"){
-                            xOff = Math.round(parseInt(getId('desktop').style.width) / 2 - (xSiz / 2));
-                        }
-                        if(yOff === "auto"){
-                            yOff = Math.round(parseInt(getId('desktop').style.height) / 2 - (ySiz / 2));
-                        }
-                        xOff = Math.round(xOff);
-                        yOff = Math.round(yOff);
-                        if(this.windowX !== xOff){
-                            getId("win_" + this.objName + "_top").style.left = xOff + "px";
-                            //getId('win' + this.dsktpIcon).style.transform = 'translateX(' + xOff + 'px) translateY(' + yOff + 'px)';
-                            this.windowX = Math.round(xOff);
-                        }
-                        if(this.windowY !== yOff){
-                            getId("win_" + this.objName + "_top").style.top = (yOff * (yOff > -1)) + "px";
-                            //getId('win' + this.dsktpIcon).style.transform = 'translateX(' + xOff + 'px) translateY(' + yOff + 'px)';
-                            this.windowY = Math.round(yOff);
-                        }
-                        if(this.windowH !== xSiz){
-                            getId("win_" + this.objName + "_top").style.width = xSiz + "px";
-                            getId("win_" + this.objName + "_cap").style.width = xSiz - 29 + "px";
-                            //getId("win" + this.dsktpIcon + "h").style.width = xSiz - 9 + "px";
-                            getId("win_" + this.objName + "_aero").style.width = xSiz + 80 + "px";
-                            this.windowH = xSiz;
-                        }
-                        if(this.windowV !== ySiz){
-                            if(!this.folded){
-                                getId("win_" + this.objName + "_top").style.height = ySiz + "px";
-                            }
-                            getId("win_" + this.objName + "_html").style.height = ySiz - 24 + "px";
-                            getId("win_" + this.objName + "_aero").style.height = ySiz + 80 + "px";
-                            this.windowV = ySiz;
-                        }
-                        var aeroOffset = [0, 0];
-                        if(tskbrToggle.tskbrPos === 1){
-                            aeroOffset[1] = -30;
-                        }else if(tskbrToggle.tskbrPos === 2){
-                            aeroOffset[0] = -30;
-                        }
-                        getId("win_" + this.objName + "_aero").style.backgroundPosition = (-1 * xOff + 40 + aeroOffset[0]) + "px " + (-1 * (yOff * (yOff > -1)) + 40 + aeroOffset[1]) + "px";
-                        //getId("win" + this.dsktpIcon + "a").style.width = xSiz + 80 + "px";
-                        //getId("win" + this.dsktpIcon + "a").style.height = ySiz + 80 + "px";
-                        if(typeof this.dimsSet === 'function' && !ignoreDimsSet){
-                            this.dimsSet();
-                        }
+                if(!this.fullscreen){
+                    if(xOff === "auto"){
+                        xOff = Math.round(parseInt(getId('desktop').style.width) / 2 - (xSiz / 2));
                     }
-                }else{ // mobile mode
-                    if(this.windowX !== 0){
-                        getId("win_" + this.objName + "_top").style.left = 0 + "px";
+                    if(yOff === "auto"){
+                        yOff = Math.round(parseInt(getId('desktop').style.height) / 2 - (ySiz / 2));
+                    }
+                    xOff = Math.round(xOff);
+                    yOff = Math.round(yOff);
+                    if(this.windowX !== xOff){
+                        getId("win_" + this.objName + "_top").style.left = xOff + "px";
                         //getId('win' + this.dsktpIcon).style.transform = 'translateX(' + xOff + 'px) translateY(' + yOff + 'px)';
-                        this.windowX = 0;
+                        this.windowX = Math.round(xOff);
                     }
-                    if(this.windowY !== 0){
-                        getId("win_" + this.objName + "_top").style.top = (0 * (0 > -1)) + "px";
+                    if(this.windowY !== yOff){
+                        getId("win_" + this.objName + "_top").style.top = (yOff * (yOff > -1)) + "px";
                         //getId('win' + this.dsktpIcon).style.transform = 'translateX(' + xOff + 'px) translateY(' + yOff + 'px)';
-                        this.windowY = 0;
+                        this.windowY = Math.round(yOff);
                     }
-                    if(this.windowH !== parseInt(getId('desktop').style.width)){
-                        getId("win_" + this.objName + "_top").style.width = parseInt(getId('desktop').style.width) + "px";
-                        getId("win_" + this.objName + "_cap").style.width = parseInt(getId('desktop').style.width) - 29 + "px";
+                    if(this.windowH !== xSiz){
+                        getId("win_" + this.objName + "_top").style.width = xSiz + "px";
+                        getId("win_" + this.objName + "_cap").style.width = xSiz - 29 + "px";
                         //getId("win" + this.dsktpIcon + "h").style.width = xSiz - 9 + "px";
-                        getId("win_" + this.objName + "_aero").style.width = parseInt(getId('desktop').style.width) + 80 + "px";
-                        this.windowH = parseInt(getId('desktop').style.width);
+                        getId("win_" + this.objName + "_aero").style.width = xSiz + 80 + "px";
+                        this.windowH = xSiz;
                     }
-                    if(this.windowV !== parseInt(getId('desktop').style.height)){
+                    if(this.windowV !== ySiz){
                         if(!this.folded){
-                            getId("win_" + this.objName + "_top").style.height = parseInt(getId('desktop').style.height) + "px";
+                            getId("win_" + this.objName + "_top").style.height = ySiz + "px";
                         }
                         getId("win_" + this.objName + "_html").style.height = ySiz - 24 + "px";
-                        getId("win_" + this.objName + "_aero").style.height = parseInt(getId('desktop').style.height) + 80 + "px";
-                        this.windowV = parseInt(getId('desktop').style.height);
+                        getId("win_" + this.objName + "_aero").style.height = ySiz + 80 + "px";
+                        this.windowV = ySiz;
                     }
                     var aeroOffset = [0, 0];
                     if(tskbrToggle.tskbrPos === 1){
@@ -1388,9 +1386,7 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
                     }else if(tskbrToggle.tskbrPos === 2){
                         aeroOffset[0] = -30;
                     }
-                    getId("win_" + this.objName + "_aero").style.backgroundPosition = (-1 * 0 + 40 + aeroOffset[0]) + "px " + (-1 * (0 * (0 > -1)) + 40 + aeroOffset[1]) + "px";
-                    if(parseInt(getId('desktop').style.width) !== xSiz && parseInt(getId('desktop').style.height) !== ySiz)
-                    getId("win_" + this.objName + "_html").style.transform = "scale(" + ((parseInt(getId('desktop').style.width) - 6) / (xSiz - 6)) + ", " + ((parseInt(getId('desktop').style.height) - 24) / (ySiz - 24)) + ")";
+                    getId("win_" + this.objName + "_aero").style.backgroundPosition = (-1 * xOff + 40 + aeroOffset[0]) + "px " + (-1 * (yOff * (yOff > -1)) + 40 + aeroOffset[1]) + "px";
                     //getId("win" + this.dsktpIcon + "a").style.width = xSiz + 80 + "px";
                     //getId("win" + this.dsktpIcon + "a").style.height = ySiz + 80 + "px";
                     if(typeof this.dimsSet === 'function' && !ignoreDimsSet){
@@ -1400,6 +1396,7 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
             },
             openWindow: function(){
                 this.appIcon = 1;
+                getId("win_" + this.objName + "_top").classList.remove('closedWindow');
                 getId("win_" + this.objName + "_top").style.display = "block";
                 getId("icn_" + this.objName).style.display = "inline-block";
                 getId("win_" + this.objName + "_top").style.pointerEvents = "";
@@ -1419,6 +1416,7 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
             },
             closeWindow: function(){
                 this.appIcon = 0;
+                getId("win_" + this.objName + "_top").classList.add('closedWindow');
                 
                 // experimental
                 getId('win_' + this.objName + '_top').style.transformOrigin = '';
@@ -1445,7 +1443,9 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
                 //getId("win" + this.dsktpIcon).style.display = "none";
                 //getId("win" + this.dsktpIcon).style.opacity = "0";
                 
-                getId("icn_" + this.objName).style.display = "none";
+                if(pinnedApps.indexOf(this.objName) === -1){
+                    getId("icn_" + this.objName).style.display = "none";
+                }
                 this.fullscreen = 0;
                 if(this.folded){
                     this.foldWindow();
@@ -1453,7 +1453,9 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
                 toTop({dsktpIcon: 'CLOSING'}, 1);
             },
             closeIcon: function(){
-                getId('icn_' + this.objName).style.display = 'none';
+                if(pinnedApps.indexOf(this.objName) === -1){
+                    getId("icn_" + this.objName).style.display = "none";
+                }
             },
             folded: 0,
             foldWindow: function(){
@@ -1470,34 +1472,66 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
             closeKeepTask: function(){
                 // experimental
                 if(this.objName !== 'startMenu'){
-                    switch(tskbrToggle.tskbrPos){
-                        case 1:
-                            try{
-                                getId("win_" + this.objName + "_top").style.transformOrigin = getId("icn_" + this.objName).getBoundingClientRect().left - this.windowX + 23 + 'px ' + (0 - this.windowY) + 'px';
-                            }catch(err){
-                                getId("win_" + this.objName + "_top").style.transformOrigin = '50% -' + window.innerHeight + 'px';
-                            }
-                            break;
-                        case 2:
-                            try{
-                                getId("win_" + this.objName + "_top").style.transformOrigin = (0 - this.windowX - 30) + 'px ' + (getId("icn_" + this.objName).getBoundingClientRect().top - this.windowY + 23) + 'px';
-                            }catch(err){
-                                getId("win_" + this.objName + "_top").style.transformOrigin = '-' + window.innerWidth + 'px 50%';
-                            }
-                            break;
-                        case 3:
-                            try{
-                                getId("win_" + this.objName + "_top").style.transformOrigin = (parseInt(getId('monitor').style.width, 10) - this.windowX - 30) + 'px ' + (getId("icn_" + this.objName).getBoundingClientRect().top - this.windowY + 23) + 'px';
-                            }catch(err){
-                                getId("win_" + this.objName + "_top").style.transformOrigin = '50% ' + window.innerWidth + 'px';
-                            }
-                            break;
-                        default:
-                            try{
-                                getId("win_" + this.objName + "_top").style.transformOrigin = getId("icn_" + this.objName).getBoundingClientRect().left - this.windowX + 23 + 'px ' + (parseInt(getId('monitor').style.height, 10) - this.windowY - 30) + 'px';
-                            }catch(err){
-                                getId("win_" + this.objName + "_top").style.transformOrigin = '50% ' + window.innerHeight + 'px';
-                            }
+                    if(!mobileMode){
+                        switch(tskbrToggle.tskbrPos){
+                            case 1:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = getId("icn_" + this.objName).getBoundingClientRect().left - this.windowX + 23 + 'px ' + (0 - this.windowY) + 'px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '50% -' + window.innerHeight + 'px';
+                                }
+                                break;
+                            case 2:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = (0 - this.windowX - 30) + 'px ' + (getId("icn_" + this.objName).getBoundingClientRect().top - this.windowY + 23) + 'px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '-' + window.innerWidth + 'px 50%';
+                                }
+                                break;
+                            case 3:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = (parseInt(getId('monitor').style.width, 10) - this.windowX - 30) + 'px ' + (getId("icn_" + this.objName).getBoundingClientRect().top - this.windowY + 23) + 'px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '50% ' + window.innerWidth + 'px';
+                                }
+                                break;
+                            default:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = getId("icn_" + this.objName).getBoundingClientRect().left - this.windowX + 23 + 'px ' + (parseInt(getId('monitor').style.height, 10) - this.windowY - 30) + 'px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '50% ' + window.innerHeight + 'px';
+                                }
+                        }
+                    }else{
+                        switch(tskbrToggle.tskbrPos){
+                            case 1:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = getId("icn_" + this.objName).getBoundingClientRect().left + 23 + 'px 0px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '50% -' + window.innerHeight + 'px';
+                                }
+                                break;
+                            case 2:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '-30px ' + (getId("icn_" + this.objName).getBoundingClientRect().top + 23) + 'px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '-' + window.innerWidth + 'px 50%';
+                                }
+                                break;
+                            case 3:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = (parseInt(getId('monitor').style.width, 10) - 30) + 'px ' + (getId("icn_" + this.objName).getBoundingClientRect().top + 23) + 'px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '50% ' + window.innerWidth + 'px';
+                                }
+                                break;
+                            default:
+                                try{
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = getId("icn_" + this.objName).getBoundingClientRect().left + 23 + 'px ' + (parseInt(getId('monitor').style.height, 10) - 30) + 'px';
+                                }catch(err){
+                                    getId("win_" + this.objName + "_top").style.transformOrigin = '50% ' + window.innerHeight + 'px';
+                                }
+                        }
                     }
                     //try{
                         getId("win_" + this.objName + "_top").style.transform = 'scale(0.1)'; //'scale(' + apps.settings.vars.winFadeDistance + ')';
@@ -1534,17 +1568,15 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
             },
             fullscreentempvars: [0, 0, 0, 0],
             toggleFullscreen: function(){
-                if(!mobileMode){
-                    d(1, 'Setting Maximise.');
-                    if(this.fullscreen){
-                        this.fullscreen = 0;
-                        this.setDims(this.fullscreentempvars[0], this.fullscreentempvars[1], this.fullscreentempvars[2], this.fullscreentempvars[3]);
-                    }else{
-                        this.fullscreentempvars = [this.windowX, this.windowY, this.windowH, this.windowV];
-                        this.setDims(-3, 0, parseInt(getId('desktop').style.width, 10) + 6, parseInt(getId('desktop').style.height, 10) + 3);
-                        this.fullscreen = 1;
-                        //getId("win" + this.dsktpIcon).style.transform = 'scale(' + (parseInt(getId("desktop").style.width) / this.windowH) + ',' + (parseInt(getId("desktop").style.height) / this.windowV) + ')';
-                    }
+                d(1, 'Setting Maximise.');
+                if(this.fullscreen){
+                    this.fullscreen = 0;
+                    this.setDims(this.fullscreentempvars[0], this.fullscreentempvars[1], this.fullscreentempvars[2], this.fullscreentempvars[3]);
+                }else{
+                    this.fullscreentempvars = [this.windowX, this.windowY, this.windowH, this.windowV];
+                    this.setDims(-3, 0, parseInt(getId('desktop').style.width, 10) + 6, parseInt(getId('desktop').style.height, 10) + 3);
+                    this.fullscreen = 1;
+                    //getId("win" + this.dsktpIcon).style.transform = 'scale(' + (parseInt(getId("desktop").style.width) / this.windowH) + ',' + (parseInt(getId("desktop").style.height) / this.windowV) + ')';
                 }
             }
         };
@@ -1586,7 +1618,7 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
             getId("app_" + appPath).style.display = "none";
         }
         getId("desktop").innerHTML +=
-            '<div class="window" id="win_' + appPath + '_top">' +
+            '<div class="window closedWindow" id="win_' + appPath + '_top">' +
             '<div class="winAero" id="win_' + appPath + '_aero"></div>' +
             '<div class="winBimg" id="win_' + appPath + '_img"></div>' +
             '<div class="winRot cursorOpenHand" id="win_' + appPath + '_size"></div>' +
@@ -1618,11 +1650,11 @@ var Application = function(appIcon, appDesc, handlesLaunchTypes, mainFunction, s
         getId("win_" + appPath + "_cap").setAttribute("onclick", "if(apps.settings.vars.clickToMove){if(event.button!==2){toTop(apps." + appPath + ");winmove(event);}event.preventDefault();return false;}");
         getId("win_" + appPath + "_size").setAttribute("onclick", "if(apps.settings.vars.clickToMove){if(event.button!==2){toTop(apps." + appPath + ");winrot(event);}event.preventDefault();return false;}");
         getId("app_" + appPath).setAttribute("onClick", "openapp(apps." + appPath + ", 'dsktp')");
-        getId("icn_" + appPath).setAttribute("onClick", "openapp(apps." + appPath + ", 'tskbr')");
+        getId("icn_" + appPath).setAttribute("onClick", "openapp(apps." + appPath + ", function(){if(apps." + appPath + ".appWindow.appIcon){return 'tskbr'}else{return 'dsktp'}}())");
         getId("win_" + appPath + "_top").setAttribute("onClick", "toTop(apps." + appPath + ")");
         if(appPath !== 'startMenu' && appPath !== 'nora'){
             getId("icn_" + appPath).setAttribute("oncontextmenu", "ctxMenu(baseCtx.icnXXX, 1, event, '" + appPath + "')");
-            getId("icn_" + appPath).setAttribute("onmouseenter", "highlightWindow('" + appPath + "')");
+            getId("icn_" + appPath).setAttribute("onmouseenter", "if(apps." + appPath + ".appWindow.appIcon){highlightWindow('" + appPath + "')}");
             getId("icn_" + appPath).setAttribute("onmouseleave", "highlightHide()");
         }
         getId("win_" + appPath + "_exit").setAttribute("onClick", "apps." + appPath + ".signalHandler('close');event.stopPropagation()");
@@ -1826,12 +1858,18 @@ widgets.fps = new Widget(
     function(){ // start function
         widgets.fps.vars.running = 1;
         //widgets.time.setWidth('58px');
-        getId('widget_fps').innerHTML = '<div id="compactFPS"></div><div style="position:static;margin-left:26px;margin-right:6px;margin-top:-25px;font-family:Courier,monospace;font-size:21px">' + lang('aOS', 'framesPerSecond') + '</div>';
+        getId('widget_fps').innerHTML = '<div id="compactFPS"></div><div id="postCompactFPS" style="position:static;margin-left:26px;margin-right:6px;margin-top:-25px;font-family:Courier,monospace;font-size:21px">' + lang('aOS', 'framesPerSecond') + '</div>';
         widgets.fps.frame();
     },
     function(){ // frame function (this.vars.frame())
         if(widgets.fps.vars.running){
-            getId('compactFPS').innerHTML = stringFPS.substring(0, stringFPS.length - 1) + '<br>' + stringVFPS.substring(0, stringVFPS.length - 4);
+            if(!mobileMode){
+                getId('compactFPS').innerHTML = stringFPS.substring(0, stringFPS.length - 1) + '<br>' + stringVFPS.substring(0, stringVFPS.length - 4);
+                getId('postCompactFPS').innerHTML = lang('aOS', 'framesPerSecond');
+            }else{
+                getId('compactFPS').innerHTML = '';
+                getId('postCompactFPS').innerHTML = '';
+            }
             requestAnimationFrame(widgets.fps.frame);
         }
     },
@@ -1850,23 +1888,27 @@ widgets.battery = new Widget(
     },
     function(){
         widgets.battery.vars.running = 1;
-        getId('widget_battery').innerHTML = '<div id="batteryWidgetFrame">????</div><div style="position:static;margin-top:-8px;border:1px solid #FFF;width:0;height:3px;margin-left:32px"></div>';
+        widgets.battery.vars.styles[USERFILES.WGT_BATTERY_STYLE || "def"][0]();
+        /*
         widgets.battery.vars.previousAmount = batteryLevel;
         widgets.battery.vars.previousAmountChange = 0;
         widgets.battery.vars.amountChange = 0;
         perfStart('batteryWidget');
+        */
         widgets.battery.frame();
     },
     function(){
         if(widgets.battery.vars.running){
             if(batteryLevel !== -1){
-                getId('batteryWidgetFrame').innerHTML = taskbarBatteryStr;
+                widgets.battery.vars.styles[USERFILES.WGT_BATTERY_STYLE || "def"][1]();
+                /*
                 if(perfCheck('batteryWidget') > 120000000){
                     widgets.battery.vars.amountChange = widgets.battery.vars.previousAmountChange;
                     widgets.battery.vars.amountChange = batteryLevel - widgets.battery.vars.previousAmount;
                     widgets.battery.vars.previousAmount = batteryLevel;
                     perfStart('batteryWidget');
                 }
+                */
             }
             requestAnimationFrame(widgets.battery.frame);
         }
@@ -1876,18 +1918,54 @@ widgets.battery = new Widget(
     },
     {
         running: 0,
+        /*
         previousPreviousAmount: 0,
         previousAmount: 0,
         amountChange: 0,
+        */
+        styles: {
+            def: [
+                function(){
+                    getId('widget_battery').innerHTML = '<div id="batteryWidgetFrame">????</div><div style="position:static;margin-top:-8px;border:1px solid #FFF;width:0;height:3px;margin-left:32px"></div>';
+                },
+                function(){
+                    getId('batteryWidgetFrame').innerHTML = taskbarBatteryStr;
+                }
+            ],
+            text: [
+                function(){
+                    getId('widget_battery').innerHTML = '[???]';
+                },
+                function(){
+                    if(cpuBattery.charging){
+                        getId('widget_battery').innerHTML = '<div style="pointer-events:none;line-height:150%;position:relative;padding-left:3px;padding-right:3px">{' + taskbarBatteryStr.substring(0, 3) + '}</div>';
+                    }else{
+                        getId('widget_battery').innerHTML = '<div style="pointer-events:none;line-height:150%;position:relative;padding-left:3px;padding-right:3px">[' + taskbarBatteryStr.substring(0, 3) + ']</div>';
+                    }
+                }
+            ],
+            old: [
+                function(){
+                    getId('widget_battery').innerHTML = '<div style="pointer-events:none;position:relative;margin-left:3px;margin-right:3px;margin-top:3px;border:1px solid #FFF;background:rgb(0, 0, 0);width:50px;height:21px;"><div style="overflow:visible;width:0px;height:21px;background-color:rgb(255, 0, 0);text-align:center;">???</div></div>';
+                },
+                function(){
+                    getId('widget_battery').innerHTML = '<div style="pointer-events:none;position:relative;margin-left:3px;margin-right:3px;margin-top:3px;border:1px solid #FFF;background:rgb(0, 0, ' + (batteryCharging * 255) + ');width:50px;height:21px;"><div style="overflow:visible;width:' + Math.round(batteryLevel * 50) + 'px;height:21px;background-color:rgb(' + Math.round(255 - (batteryLevel * 255)) + ',' + Math.round(batteryLevel * 255) + ',0);text-align:center;">' + Math.round(batteryLevel * 100) + '</div></div>';
+                }
+            ],
+        },
+        changeStyle: function(newStyle){
+            apps.savemaster.vars.save("WGT_BATTERY_STYLE", newStyle, 1);
+            widgets.battery.vars.styles[newStyle][0]();
+        },
         generateMenu: function(){
             if(batteryCharging){
                 return "<div style='font-size:24px'>Current battery level:<br>" + (batteryLevel * 100) + "%<br><br>" +
                     "Battery is charging.<br><br>" +
-                    "Time to full charge:<br>" + Math.round((1 - widgets.battery.vars.previousAmount) / ((widgets.battery.vars.amountChange + widgets.battery.vars.previousAmountChange) / 2) * 2) + " minutes</div>";
+                    'Battery Style:<br><button onclick="widgets.battery.vars.changeStyle(\'def\')">Default</button> <button onclick="widgets.battery.vars.changeStyle(\'text\')">Text</button> <button onclick="widgets.battery.vars.changeStyle(\'old\')">Old</button></div>'
             }else{
                 return "<div style='font-size:24px'><br>Current battery level:<br>" + (batteryLevel * 100) + "%<br><br>" +
                     "Battery is not charging.<br><br>" +
-                    "Time remaining:<br>" + Math.round(widgets.battery.vars.previousAmount / (-1 * ((widgets.battery.vars.amountChange + widgets.battery.vars.previousAmountChange) / 2)) * 2) + " minutes</div>";
+                    'Battery Style:<br><button onclick="widgets.battery.vars.changeStyle(\'def\')">Default</button> <button onclick="widgets.battery.vars.changeStyle(\'text\')">Text</button> <button onclick="widgets.battery.vars.changeStyle(\'old\')">Old</button></div>'
             }
         }
     }
@@ -1907,7 +1985,11 @@ widgets.network = new Widget(
     },
     function(){
         if(widgets.network.vars.running){
-            getId('widget_network').innerHTML = taskbarOnlineStr;
+            if(!mobileMode){
+                getId('widget_network').innerHTML = taskbarOnlineStr;
+            }else{
+                getId('widget_network').innerHTML = '';
+            }
             requestAnimationFrame(widgets.network.frame);
         }
     },
@@ -1933,7 +2015,11 @@ widgets.cpu = new Widget(
     },
     function(){
         if(widgets.cpu.vars.running){
-            getId('widget_cpu').innerHTML = stringFPSload;
+            if(!mobileMode){
+                getId('widget_cpu').innerHTML = stringFPSload;
+            }else{
+                getId('widget_cpu').innerHTML = '';
+            }
             requestAnimationFrame(widgets.cpu.frame);
         }
     },
@@ -2243,6 +2329,7 @@ c(function(){
                             requestAnimationFrame(function(){apps.startMenu.appWindow.setDims(0, parseInt(getId('desktop').style.height, 10) - 370, 300, 370)});
                     }
                     this.appWindow.openWindow();
+                    //getId('win_startMenu_top').style.transform = '';
                     switch(USERFILES.APP_STN_DASHBOARD){
                         case 'whisker':
                             this.appWindow.setContent('<span style="color:#FFF;font-family:aosProFont,monospace;font-size:12px">User: ' + apps.messaging.vars.parseBB(apps.messaging.vars.name) + '</span><div style="left:0;bottom:0;height:calc(100% - 3em);overflow-y:scroll;width:calc(70% - 2px);background:' + darkSwitch('#FFF', '#000') + ';color:' + darkSwitch('#000', '#FFF') + ';"><table style="position:absolute;left:0;top:0;width:100%;max-width:100%;" id="appDsBtable"></table></div><div style="right:0;top:0;height:calc(100% - 2em);width:calc(30% - 2px);max-width:calc(30% - 2px);text-align:right"><img class="cursorPointer" style="width:10px;height:10px;" src="ctxMenu/beta/gear.png" onclick="openapp(apps.settings,\'dsktp\')"> <img class="cursorPointer" style="width:10px;height:10px;" src="ctxMenu/beta/power.png" onclick="c(function(){ctxMenu(apps.startMenu.vars.powerCtx, 1, event)})"><br><br><br><button style="width:100%" onclick="openapp(apps.taskManager, \'dsktp\')">' + lang('startMenu', 'taskManager') + '</button><br><button style="width:100%" onclick="openapp(apps.jsConsole, \'dsktp\')">' + lang('startMenu', 'jsConsole') + '</button><br><button style="width:100%" onclick="openapp(apps.settings, \'dsktp\')">' + lang('startMenu', 'settings') + '</button><br><button style="width:100%" onclick="openapp(apps.files, \'dsktp\')">' + lang('startMenu', 'files') + '</button><br><button style="width:100%" onclick="openapp(apps.appsbrowser, \'dsktp\')">' + lang('startMenu', 'allApps') + '</button><br><button style="width:100%" onclick="openapp(apps.help, \'dsktp\')">' + lang('startMenu', 'aosHelp') + '</button></div><input style="position:absolute;left:0;top:1.5em;width:calc(100% - 2px);" placeholder="App Search" onkeyup="apps.startMenu.vars.search(event)" id="appDsBsearch"></span>');
@@ -2299,7 +2386,7 @@ c(function(){
                             }
                             break;
                         case 'android':
-                            this.appWindow.setContent('<div style="width:100%;height:100%;overflow-y:scroll"><span style="padding-bottom:4px;">&nbsp;<button onclick="c(function(){ctxMenu(apps.startMenu.vars.powerCtx, 1, event)})">' + lang('startMenu', 'power') + '</button>  <button onclick="openapp(apps.taskManager, \'dsktp\')">' + lang('startMenu', 'taskManager') + '</button> <button onclick="openapp(apps.jsConsole, \'dsktp\')">' + lang('startMenu', 'jsConsole') + '</button> <button onclick="openapp(apps.settings, \'dsktp\')">' + lang('startMenu', 'settings') + '</button> <button onclick="openapp(apps.files, \'dsktp\')">' + lang('startMenu', 'files') + '</button> <button onclick="openapp(apps.appsbrowser, \'dsktp\')">' + lang('startMenu', 'allApps') + '</button> <button onclick="openapp(apps.help, \'dsktp\')">' + lang('startMenu', 'aosHelp') + '</button><br><input style="width:calc(100% - 4px);margin-top:3px" placeholder="App Search" onkeyup="apps.startMenu.vars.search(event, 1)" id="appDsBsearch"></span><hr style="margin:0;margin-top:2px"><div id="appDsBtable" style="background-color:' + darkSwitch('#FFF', '#000') + ';color:' + darkSwitch('#000', '#FFF') + ';font-family:aosProFont, monospace; font-size:12px; width:' + (294 - scrollWidth) + 'px;"></div></div>');
+                            this.appWindow.setContent('<div style="width:100%;height:100%;overflow-y:scroll"><span style="padding-bottom:4px;">&nbsp;<button onclick="c(function(){ctxMenu(apps.startMenu.vars.powerCtx, 1, event)})">' + lang('startMenu', 'power') + '</button>  <button onclick="openapp(apps.taskManager, \'dsktp\')">' + lang('startMenu', 'taskManager') + '</button> <button onclick="openapp(apps.jsConsole, \'dsktp\')">' + lang('startMenu', 'jsConsole') + '</button> <button onclick="openapp(apps.settings, \'dsktp\')">' + lang('startMenu', 'settings') + '</button> <button onclick="openapp(apps.files, \'dsktp\')">' + lang('startMenu', 'files') + '</button> <button onclick="openapp(apps.appsbrowser, \'dsktp\')">' + lang('startMenu', 'allApps') + '</button> <button onclick="openapp(apps.help, \'dsktp\')">' + lang('startMenu', 'aosHelp') + '</button><br><input style="width:calc(100% - 4px);margin-top:3px" placeholder="App Search" onkeyup="apps.startMenu.vars.search(event, 1)" id="appDsBsearch"></span><hr style="margin:0;margin-top:2px"><div id="appDsBtable" style="background-color:' + darkSwitch('#FFF', '#000') + ';color:' + darkSwitch('#000', '#FFF') + ';font-family:aosProFont, monospace; font-size:12px; width:calc(100% - 2px);"></div></div>');
                             if(this.vars.listOfApps.length === 0){
                                 getId('appDsBtable').innerHTML = '<img src="loadLight.gif" style="width:100%;">';
                                 //getId('appDsBtable').style.cursor = cursors.loadLight;
@@ -2326,7 +2413,7 @@ c(function(){
                             }
                             break;
                         default:
-                            this.appWindow.setContent('<div style="width:100%;height:100%;overflow-y:scroll;"><span style="padding-bottom:4px;">&nbsp;<button onclick="c(function(){ctxMenu(apps.startMenu.vars.powerCtx, 1, event)})">' + lang('startMenu', 'power') + '</button>  <button onclick="openapp(apps.taskManager, \'dsktp\')">' + lang('startMenu', 'taskManager') + '</button> <button onclick="openapp(apps.jsConsole, \'dsktp\')">' + lang('startMenu', 'jsConsole') + '</button> <button onclick="openapp(apps.settings, \'dsktp\')">' + lang('startMenu', 'settings') + '</button> <button onclick="openapp(apps.files, \'dsktp\')">' + lang('startMenu', 'files') + '</button> <button onclick="openapp(apps.appsbrowser, \'dsktp\')">' + lang('startMenu', 'allApps') + '</button> <button onclick="openapp(apps.help, \'dsktp\')">' + lang('startMenu', 'aosHelp') + '</button><br><input style="width:calc(100% - 4px);margin-top:3px" placeholder="App Search" onkeyup="apps.startMenu.vars.search(event)" id="appDsBsearch"></span><hr style="margin:0;margin-top:2px"><table id="appDsBtable" style="color:#000;font-family:aosProFont, monospace; font-size:12px; width:' + (294 - scrollWidth) + 'px;"></table></div>');
+                            this.appWindow.setContent('<div style="width:100%;height:100%;overflow-y:scroll;"><span style="padding-bottom:4px;">&nbsp;<button onclick="c(function(){ctxMenu(apps.startMenu.vars.powerCtx, 1, event)})">' + lang('startMenu', 'power') + '</button>  <button onclick="openapp(apps.taskManager, \'dsktp\')">' + lang('startMenu', 'taskManager') + '</button> <button onclick="openapp(apps.jsConsole, \'dsktp\')">' + lang('startMenu', 'jsConsole') + '</button> <button onclick="openapp(apps.settings, \'dsktp\')">' + lang('startMenu', 'settings') + '</button> <button onclick="openapp(apps.files, \'dsktp\')">' + lang('startMenu', 'files') + '</button> <button onclick="openapp(apps.appsbrowser, \'dsktp\')">' + lang('startMenu', 'allApps') + '</button> <button onclick="openapp(apps.help, \'dsktp\')">' + lang('startMenu', 'aosHelp') + '</button><br><input style="width:calc(100% - 4px);margin-top:3px" placeholder="App Search" onkeyup="apps.startMenu.vars.search(event)" id="appDsBsearch"></span><hr style="margin:0;margin-top:2px"><table id="appDsBtable" style="color:#000;font-family:aosProFont, monospace; font-size:12px; width:100%;"></table></div>');
                             if(this.vars.listOfApps.length === 0){
                                 getId('appDsBtable').innerHTML = '<tr><td><img src="loadLight.gif" style="width:100%;"></td></tr>';
                                 //getId('appDsBtable').style.cursor = cursors.loadLight;
@@ -2369,15 +2456,27 @@ c(function(){
                     switch(tskbrToggle.tskbrPos){
                         case 1:
                             this.appWindow.setDims(-305, 0, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(-' + getId('desktop').style.width + ', 0)';
+                            }
                             break;
                         case 2:
                             this.appWindow.setDims(-305, 0, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(-' + getId('desktop').style.width + ', 0)';
+                            }
                             break;
                         case 3:
                             this.appWindow.setDims(parseInt(getId('desktop').style.width, 10) - 300, parseInt(getId('desktop').style.height, 10) + 5, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(0, ' + getId('desktop').style.height + ')';
+                            }
                             break;
                         default:
                             this.appWindow.setDims(-305, parseInt(getId('desktop').style.height, 10) - 370, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(-' + getId('desktop').style.width + ', 0)';
+                            }
                     }
                     break;
                 case "checkrunning":
@@ -2391,15 +2490,27 @@ c(function(){
                     switch(tskbrToggle.tskbrPos){
                         case 1:
                             this.appWindow.setDims(-305, 0, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(-' + getId('desktop').style.width + ', 0)';
+                            }
                             break;
                         case 2:
                             this.appWindow.setDims(-305, 0, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(-' + getId('desktop').style.width + ', 0)';
+                            }
                             break;
                         case 3:
                             this.appWindow.setDims(parseInt(getId('desktop').style.width, 10) - 300, parseInt(getId('desktop').style.height, 10) + 5, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(0, ' + getId('desktop').style.height + ')';
+                            }
                             break;
                         default:
                             this.appWindow.setDims(-305, parseInt(getId('desktop').style.height, 10) - 370, 300, 370);
+                            if(mobileMode){
+                                getId('win_startMenu_top').style.transform = 'scale(1) translate(-' + getId('desktop').style.width + ', 0)';
+                            }
                     }
                     break;
                 case "USERFILES_DONE":
@@ -4193,10 +4304,15 @@ c(function(){
                 m('Running jsC Input');
                 d(1, 'Running jsC input');
                 this.lastInputUsed = getId("cnsIn").value;
-                doLog("-> " + getId("cnsIn").value, "#0D0");
-                this.tempOutput = eval(getId("cnsIn").value);
-                doLog("=> " + this.tempOutput, "#DD0");
-                doLog("?> " + typeof this.tempOutput, "#DD0");
+                doLog("-> " + cleanStr(getId("cnsIn").value), "#0D0");
+                try{
+                    this.tempOutput = eval(getId("cnsIn").value);
+                    doLog("=> " + this.tempOutput, "#DD0");
+                    doLog("?> " + typeof this.tempOutput, "#DD0");
+                }catch(err){
+                    doLog("=> " + err, "#F00");
+                    doLog("?> Module: " + module, "#F00");
+                }
             }
         }, 0, "jsConsole", "appicons/ds/jsC.png"
     );
@@ -4232,7 +4348,7 @@ c(function(){
                 this.appWindow.setCaption(lang('appNames', 'bash'));
                 this.appWindow.setDims(parseInt(getId('desktop').style.width, 10) / 2 - 331, parseInt(getId('desktop').style.height, 10) / 2 - 252, 662, 504);
                 this.appWindow.setContent(
-                    '<span id="bashContent" style="display:block;line-height:1em;font-family:aosProFont;font-size:12px;width:100%;">aOS Psuedo-Bash Terminal (Beta)<br>Not all commands included and they may not work properly<br>root is assumed; therefore su and sudo command does nothing</span>' +
+                    '<span id="bashContent" style="display:block;line-height:1em;font-family:aosProFont;font-size:12px;width:100%;">aOS Psuedo-Bash Terminal (Beta)<br>THIS APP IS CURRENTLY BEING REWORKED AND MOST FUNCTIONALITY IS NOT PRESENT</span>' +
                     '<input id="bashInput" onkeydown="apps.bash.vars.checkPrefix()" onkeypress="apps.bash.vars.checkPrefix()" onkeyup="apps.bash.vars.checkPrefix();if(event.keyCode === 13){apps.bash.vars.execute()}" style="background:none;color:inherit;box-shadow:none;display:block;line-height:1em;font-family:aosProFont;font-size:12px;border:none;outline:none;padding:0;width:100%;">'
                 );
                 this.vars.checkPrefix();
@@ -4341,52 +4457,182 @@ c(function(){
                 if(this.piping){
                     this.pipeOut += '<br>' + String(message);
                 }else{
-                    getId('bashContent').innerHTML += '<br>' + String(message).split('  ').join(' &nbsp;') + '&nbsp;';
+                    getId('bashContent').innerHTML += '<br>' + cleanStr(String(message)).split('  ').join(' &nbsp;').split('\n').join('<br>') + '&nbsp;';
                     getId('win_bash_html').scrollTop = getId('win_bash_html').scrollHeight;
                 }
             },
             piping: 0,
             commandPipeline: 0,
             pipeOut: '',
+            getAlias: function(search, doSearch){
+                if(doSearch){
+                    var found = -1;
+                    for(var item in this.alias){
+                        if(item === search){
+                            found = item;
+                            return this.getCmdObjects(this.alias[item]);
+                        }
+                    }
+                    return [search];
+                }else{
+                    return [search];
+                }
+            },
+            getCmdObjects: function(command, alias){
+                var cmdObjects = [];
+                    
+                // doublequotes
+                var i = 0;
+                // singlequotes
+                var j = 0;
+                // spaces
+                var s = 0;
+                // current cursor
+                var curr = 0;
+                // end of potential quote sequence
+                var next = 0;
+                // previous cursor
+                var prev = 0;
+                while(prev < command.length) {
+                    i = command.indexOf('"', prev);
+                    j = command.indexOf("'", prev);
+                    s = command.indexOf(' ', prev);
+                    
+                    // if no quotes or spaces found
+                    if(i === -1 && j === -1 && s === -1){
+                        // add remainder of string to commands list
+                        var postAlias = this.getAlias(command.substring(prev, command.length), alias);
+                        for(var l in postAlias){
+                            cmdObjects.push(postAlias[l]);
+                        }
+                        // quit
+                        break;
+                    }
+                    
+                    // if space found and comes before quotes or there are no quotes
+                    if(s !== -1 && (s < i || i === -1) && (s < j || j === -1)){
+                        // if space is not current character
+                        if(s !== prev){
+                            // push this "word" to object list
+                            var postAlias = this.getAlias(command.substring(prev, s), alias);
+                            for(var l in postAlias){
+                                cmdObjects.push(postAlias[l]);
+                            }
+                        }
+                        prev = s + 1;
+                    }else{
+                        // if both types of quotes are found
+                        if(i !== -1 && j !== -1){
+                            // place cursor at closest quote
+                            curr = Math.min(i, j);
+                        // else if doublequotes are found
+                        }else if(i !== -1){
+                            // place cursor at doublequote
+                            curr = i;
+                        // else if singlequotes are found
+                        }else if(j !== -1){
+                            // place cursor at singlequote
+                            curr = j;
+                        }
+                        // if there is a character between previous "word" and this bit
+                        if(curr !== prev){
+                            // add the preceding "word" to object list
+                            var postAlias = this.getAlias(command.substring(prev, curr), alias);
+                            for(var l in postAlias){
+                                cmdObjects.push(postAlias[l]);
+                            }
+                        }
+                        // try to find end of quotes
+                        var tempCurr = curr;
+                        tempCurr = command.indexOf(command[curr], tempCurr + 1);
+                        while(command[tempCurr - 1] === "\\"){
+                            command = command.substring(0, tempCurr - 1) + command.substring(tempCurr, command.length);
+                            tempCurr = command.indexOf(command[curr], tempCurr);
+                            if(tempCurr === -1){
+                                break;
+                            }
+                        }
+                        var next = tempCurr;
+                        // if no end is found, assume it's at the end of the string
+                        if(next === -1){
+                            // add the remainder of the string to command objects
+                            cmdObjects.push(command.substring(curr + 1, command.length));
+                            // break loop
+                            break;
+                        }else{
+                            // add this quotation to list
+                            cmdObjects.push(command.substring(curr + 1, next));
+                            prev = next + 1;
+                        }
+                    }
+                }
+                doLog(cmdObjects);
+                return cmdObjects;
+            },
             execute: function(cmd, silent){
                 if(cmd){
                     this.command = cmd;
                     if(!silent){
-                        this.echo('[aOS]$ ' + cmd.split('<').join('&lt;').split('>').join('&gt;'));
+                        this.echo('[aOS]$ ' + cleanStr(cmd));
                     }
+                    var commandObjects = this.getCmdObjects(this.command);
                 }else{
                     this.command = getId('bashInput').value.substring(getId('bashInput').value.indexOf('$') + 2, getId('bashInput').value.length);
-                    this.echo(getId('bashInput').value.split('<').join('&lt;').split('>').join('&gt;'));
+                    this.echo(cleanStr(getId('bashInput').value));
                     getId('bashInput').value = this.prefix;
                     this.pastValue = this.prefix;
-                    for(var i in this.alias){
-                        if(this.command.indexOf(i) > -1){
-                            this.command = this.command.split(i).join(this.alias[i]);
-                        }
-                    }
-                    if(this.command.indexOf(' | ') > -1){
-                        this.commandPipeline = this.command.split(' | ');
-                        this.piping = 1;
-                        for(var i = 0; i < this.commandPipeline.length; i++){
-                            if(i === this.commandPipeline.length - 1){
-                                this.piping = 0;
-                            }
-                            this.pipeOutTemp = this.pipeOut;
-                            this.pipeOut = '';
-                            this.execute(this.commandPipeline[i] + ' ' + this.pipeOutTemp, 1);
-                        }
-                        return;
-                    }
+                    var commandObjects = this.getCmdObjects(this.command, 1);
                 }
-                try{
-                    this.commands.filter(function(cmnd){
-                        return (apps.bash.vars.command.indexOf(cmnd.name) === 0);
-                    })[0].action(this.command.substring(((this.command.indexOf(' ', this.command.indexOf('$') + 1) + 1) || this.command.length), this.command.length));
-                }catch(err){
-                    if(String(err) === "TypeError: Cannot read property 'action' of undefined"){
-                        this.echo('-bash: command not found: ' + err);
+                if(this.command.length !== 0){
+                    var pipeGroups = [];
+                    if(commandObjects.indexOf('|') !== -1){
+                        for(var i = 0; commandObjects.indexOf('|', i) !== -1; i = commandObjects.indexOf('|', i) + 1){
+                            var pipeGroup = [];
+                            for(var j = i; j < commandObjects.indexOf('|', i); j++){
+                                pipeGroup.push(commandObjects[j]);
+                            }
+                            pipeGroups.push(pipeGroup);
+                        }
+                        var pipeGroup = [];
+                        for(var j = commandObjects.lastIndexOf('|') + 1; j < commandObjects.length; j++){
+                            pipeGroup.push(commandObjects[j]);
+                        }
+                        pipeGroups.push(pipeGroup);
                     }else{
-                        this.echo('-bash: ' + err);
+                        pipeGroups.push(commandObjects);
+                    }
+                    
+                    var cmdResult = "";
+                    for(var i = 0; i < pipeGroups.length; i++){
+                        var currCmd = pipeGroups[i].shift();
+                        var cmdID = -1;
+                        for(var j = 0; j < this.commands.length; j++){
+                            if(this.commands[j].name === currCmd){
+                                cmdID = j;
+                                break;
+                            }
+                        }
+                        if(cmdID !== -1){
+                            try{
+                                cmdResult = this.commands[cmdID].action(pipeGroups[i]);
+                            }catch(err){
+                                this.echo(currCmd + ': ' + err);
+                                break;
+                            }
+                            if(cmdResult){
+                                if(i !== pipeGroups.length - 1){
+                                    pipeGroups[i + 1].push(cmdResult);
+                                }
+                            }
+                        }else{
+                            this.echo(currCmd + ": command not found");
+                            break;
+                        }
+                    }
+                    if(cmdResult && !cmd){
+                        this.echo(cmdResult);
+                    }else if(cmd){
+                        return cmdResult
                     }
                 }
             },
@@ -4397,14 +4643,16 @@ c(function(){
                     usage: 'help [command]',
                     desc: 'Prints the usage and help doc for a command.',
                     action: function(args){
-                        apps.bash.vars.currHelpSearch = args;
+                        apps.bash.vars.currHelpSearch = args.join(" ");
                         this.vars.foundCmds = apps.bash.vars.commands.filter(function(i){
                             return apps.bash.vars.currHelpSearch.indexOf(i.name) > -1 || i.name.indexOf(apps.bash.vars.currHelpSearch) > -1;
                         });
+                        var str = "";
                         for(var i in this.vars.foundCmds){
-                            apps.bash.vars.echo('<br>' + this.vars.foundCmds[i].name + ': ' + this.vars.foundCmds[i].usage);
-                            apps.bash.vars.echo(this.vars.foundCmds[i].desc);
+                            str += '\n\n' + this.vars.foundCmds[i].name + ': ' + this.vars.foundCmds[i].usage;
+                            str += '\n' + this.vars.foundCmds[i].desc;
                         }
+                        return str.substring(2, str.length);
                     },
                     vars: {
                         foundCmds: []
@@ -4415,20 +4663,41 @@ c(function(){
                     usage: 'echo [message]',
                     desc: 'Prints message to console.',
                     action: function(args){
-                        apps.bash.vars.echo(args);
+                        str = args.join(" ");
+                        return str;
                     }
                 },
                 {
                     name: 'alias',
-                    usage: 'alias &lt;shorthand&gt;=&lt;result&gt;',
-                    desc: 'Creates a persistent alias for the user. Quotes are not needed around alias definitions and will be included in the definition, if provided',
+                    usage: 'alias [shorthand]="[definition]"',
+                    desc: 'Creates a persistent alias for the user. Make sure to use quotes if there are spaces or quotes in your definition!',
                     action: function(args){
-                        this.vars.keypair = args.split('=');
-                        apps.bash.vars.alias[this.vars.keypair[0]] = this.vars.keypair[1];
-                        apps.savemaster.vars.save('APP_SH_ALIAS', JSON.stringify(apps.bash.vars.alias), 1);
+                        if(args.length > 0){
+                            if((args[0].length > 0 && args[1] === "=") || args[0].length > 1){
+                                if(args[0].indexOf('=') === args[0].length - 1){
+                                    var shifted = args.shift();
+                                    apps.bash.vars.alias[shifted.substring(0, shifted.length - 1)] = args.join(" ");
+                                }else if(args[1] === "="){
+                                    var shifted = args.shift();
+                                    args.shift();
+                                    apps.bash.vars.alias[shifted] = args.join(" ");
+                                }else{
+                                    throw "AliasError: The alias command appears to be malformed. Make sure your alias is only one word and the = is in the correct place.";
+                                }
+                            }else{
+                                throw "AliasError: The alias command appears to be malformed. Make sure your alias is only one word and the = is in the correct place.";
+                            }
+                            apps.savemaster.vars.save('APP_SH_ALIAS', JSON.stringify(apps.bash.vars.alias), 1);
+                        }else{
+                            var str = "";
+                            for(var i in apps.bash.vars.alias){
+                                str += '\n' + i + " = " + apps.bash.vars.alias[i];
+                            }
+                            return str.substring(1, str.length);
+                        }
                     },
                     vars: {
-                        keypair: []
+                        
                     }
                 },
                 {
@@ -4436,7 +4705,7 @@ c(function(){
                     usage: 'js [code]',
                     desc: 'Run JavaScript code and echo the returned value',
                     action: function(args){
-                        apps.bash.vars.echo(eval(args));
+                        return eval(args.join(" "));
                     }
                 },
                 {
@@ -4444,11 +4713,15 @@ c(function(){
                     usage: 'pwd [-J]',
                     desc: 'Prints the current working directory. If -J is specified, also prints the JavaScript-equivalent directory.',
                     action: function(args){
-                        if(args.toLowerCase().indexOf('-j') > -1){
-                            apps.bash.vars.echo('shdir: ' + apps.bash.vars.workdir);
-                            apps.bash.vars.echo('jsdir: ' + apps.bash.vars.translateDir(apps.bash.vars.workdir));
+                        if(args.length > 0){
+                            if(args[0].toLowerCase() === '-j'){
+                                return 'shdir: ' + apps.bash.vars.workdir + '\n' +
+                                    'jsdir: ' + apps.bash.vars.translateDir(apps.bash.vars.workdir);
+                            }else{
+                                return apps.bash.vars.workdir;
+                            }
                         }else{
-                            apps.bash.vars.echo(apps.bash.vars.workdir);
+                            return apps.bash.vars.workdir;
                         }
                     },
                     vars: {
@@ -4460,11 +4733,11 @@ c(function(){
                     usage: 'cd [dirname]',
                     desc: 'Move working directory to specified directory.',
                     action: function(args){
-                        if(args !== ''){
+                        if(args.length > 0){
                             this.vars.prevworkdir = apps.bash.vars.workdir;
-                            this.vars.tempadd = args.split('/');
+                            this.vars.tempadd = args[0].split('/');
                             this.vars.tempstart = (apps.bash.vars.workdir[0] === '/');
-                            if(args[0] === '/' || apps.bash.vars.workdir === '/'){
+                            if(args[0][0] === '/' || apps.bash.vars.workdir === '/'){
                                 this.vars.tempdir = [];
                                 this.vars.tempstart = 1;
                             }else{
@@ -4484,10 +4757,10 @@ c(function(){
                             this.vars.temppath = this.vars.temppath.split('\\').join('/').split('//').join('/');
                             apps.bash.vars.workdir = this.vars.temppath;
                             if(apps.bash.vars.getRealDir('') === undefined){
-                                apps.bash.vars.echo('Failed to change workdir - ' + apps.bash.vars.workdir + ' does not exist');
+                                throw "" + apps.bash.vars.workdir + ': No such file or directory';
                                 apps.bash.vars.workdir = this.vars.prevworkdir;
                             }else if(typeof apps.bash.vars.getRealDir('') !== 'object'){
-                                apps.bash.vars.echo('Failed to change workdir - ' + apps.bash.vars.workdir + ' is a file');
+                                throw "" + apps.bash.vars.workdir + ': Not a directory';
                                 apps.bash.vars.workdir = this.vars.prevworkdir;
                             }
                             //apps.bash.vars.echo(this.vars.temppath);
@@ -4510,18 +4783,18 @@ c(function(){
                 },
                 {
                     name: 'grep',
-                    usage: 'grep [target] <- [source]',
+                    usage: 'grep [needle] ',
                     desc: 'List lines of a source that contain a target string.',
                     action: function(args){
-                        this.vars.target = args.split(' <- ')[0];
-                        this.vars.lines = args.split(' <- ')[1].split('<br>');
+                        this.vars.target = args.shift();
+                        this.vars.lines = args.join("\n").split('\n');
                         this.vars.out = '';
                         for(var i in this.vars.lines){
-                            if(this.vars.lines[i].indexOf(this.vars.target) > -1){
-                                this.vars.out += '<br>' + this.vars.lines[i];
+                            if(this.vars.lines[i].toLowerCase().indexOf(this.vars.target.toLowerCase()) > -1){
+                                this.vars.out += '\n' + this.vars.lines[i];
                             }
                         }
-                        apps.bash.vars.echo(this.vars.out);
+                        return this.vars.out.substring(1, this.vars.out.length);
                     },
                     vars: {
                         target: '',
@@ -4535,36 +4808,54 @@ c(function(){
                     desc: 'List files in a directory.<br>-R prints subdirectories up to 1 layer deep<br>If no directory is provided, current directory is used.<br>WARNING: -s can be dangerous in large directories like /',
                     action: function(args){
                         //if(apps.bash.vars.translateDir(args) !== 'window'){
-                        this.vars.printBuffer = '';
-                        if(args.indexOf('-R') === 0){
-                            try{
-                                this.vars.selectedDir = apps.bash.vars.getRealDir(args.split(' ')[1]);
-                            }catch(err){
-                                this.vars.selectedDir = apps.bash.vars.getRealDir('');
+                        if(args.length > 0){
+                            if(args[0] === "-R"){
+                                try{
+                                    this.vars.selectedDir = apps.bash.vars.getRealDir(args[1]);
+                                }catch(err){
+                                    this.vars.selectedDir = apps.bash.vars.getRealDir('');
+                                }
+                                this.vars.printSub = 1;
+                            }else{
+                                this.vars.selectedDir = apps.bash.vars.getRealDir(args[0]);
+                                this.vars.printSub = 0;
                             }
-                            this.vars.printSub = 1;
                         }else{
-                            this.vars.selectedDir = apps.bash.vars.getRealDir(args);
+                            this.vars.selectedDir = apps.bash.vars.getRealDir('');
                             this.vars.printSub = 0;
                         }
                         // apps.bash.vars.echo('Contents of directory ' + args);
                         var dirSize = 0;
-                        for(var item in this.vars.selectedDir){
-                                dirSize++;
-                                if(dirSize > 1){
-                                    this.vars.printBuffer += item + '<br>';
-                                }else{
-                                    this.vars.printBuffer += item;
+                        var printBuffer = "";
+                        if(typeof this.vars.selectedDir){
+                            if(typeof this.vars.selectedDir === 'object'){
+                                for(var item in this.vars.selectedDir){
+                                    dirSize++;
+                                    if(dirSize > 1){
+                                        printBuffer += '\n' + item;
+                                    }else{
+                                        printBuffer += item;
+                                    }
+                                    if(typeof this.vars.selectedDir[item] === 'object'){
+                                        printBuffer += '/';
+                                        if(this.vars.printSub){
+                                            for(var subitem in this.vars.selectedDir[item]){
+                                                printBuffer += '\n' + item + '/' + subitem;
+                                                if(typeof this.vars.selectedDir[item][subitem] === 'object'){
+                                                    printBuffer += '/';
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                            if(typeof this.vars.selectedDir[item] === 'object' && this.vars.printSub){
-                                for(var subitem in this.vars.selectedDir[item]){
-                                    this.vars.printBuffer += '&nbsp; ' + subitem + '<br>';
-                                }
+                            }else{
+                                throw args.join(' ') + ': Not a directory';
                             }
+                        }else{
+                            throw 'Cannot access ' + args.join(' ') + ': No such file or directory';
                         }
-                        this.vars.printBuffer += '<br>Size of directory: ' + dirSize + ' items';
-                        apps.bash.vars.echo(this.vars.printBuffer);
-                        this.vars.printBuffer = '';
+                        //this.vars.printBuffer += '<br>Size of directory: ' + dirSize + ' items';
+                        return printBuffer;
                         //}else{
                         //    apps.bash.vars.echo('Warning - root directory "/" cannot be scanned.');
                         //}
@@ -4572,17 +4863,20 @@ c(function(){
                     vars: {
                         printSub: 0,
                         selectedDir: {},
-                        printBuffer: ''
                     }
                 },
                 {
                     name: 'mv',
-                    usage: 'mv &lt;path&gt; &lt;newpath&gt;',
+                    usage: 'mv [path] [newpath]',
                     desc: 'Moves a file or directory to a new path.',
                     action: function(args){
-                        this.vars.currSet = args.split(' ');
-                        eval(apps.bash.vars.translateDir(this.vars.currSet[1]) + '=' + apps.bash.vars.translateDir(this.vars.currSet[0]));
-                        eval('delete ' + apps.bash.vars.translateDir(this.vars.currSet[0]));
+                        if(args.length > 1){
+                            this.vars.currSet = [args[0], args[1]];
+                            eval(apps.bash.vars.translateDir(this.vars.currSet[1]) + '=' + apps.bash.vars.translateDir(this.vars.currSet[0]));
+                            eval('delete ' + apps.bash.vars.translateDir(currSet[0]));
+                        }else{
+                            throw "Missing a file, must specify two";
+                        }
                     },
                     vars: {
                         currSet: [],
@@ -4591,11 +4885,15 @@ c(function(){
                 },
                 {
                     name: 'cp',
-                    usage: 'cp &lt;path&gt; &lt;newpath&gt;',
+                    usage: 'cp [path] [newpath]',
                     desc: 'Copies a file or directory to a new path.',
                     action: function(args){
-                        this.vars.currSet = args.split(' ');
-                        eval(apps.bash.vars.translateDir(this.vars.currSet[1]) + '=' + apps.bash.vars.translateDir(this.vars.currSet[0]));
+                        if(args.length > 1){
+                            this.vars.currSet = [args[0], args[1]];
+                            eval(apps.bash.vars.translateDir(this.vars.currSet[1]) + '=' + apps.bash.vars.translateDir(this.vars.currSet[0]));
+                        }else{
+                            throw "Missing a file, must specify two";
+                        }
                     },
                     vars: {
                         currSet: [],
@@ -4604,25 +4902,56 @@ c(function(){
                 },
                 {
                     name: 'rm',
-                    usage: 'rm &lt;file&gt;',
-                    desc: 'Deletes a file or directory.',
+                    usage: 'rm [file]...',
+                    desc: 'Deletes files.',
                     action: function(args){
-                        eval('delete ' + apps.bash.vars.translateDir(args));
+                        if(args.length > 0){
+                            for(var i in args){
+                                if(typeof apps.bash.vars.getRealDir(args[i]) !== 'object'){
+                                    eval('delete ' + apps.bash.vars.translateDir(args[i]));
+                                }else{
+                                    throw 'Cannot delete ' + args[i] + ': is a directory';
+                                }
+                            }
+                        }else{
+                            throw 'No files provided';
+                        }
                     }
                 },
                 {
                     name: 'rmdir',
-                    usage: 'rmdir &lt;file&gt;',
+                    usage: 'rmdir [directory]',
                     desc: 'Deletes a file or directory.',
                     action: function(args){
-                        eval('delete ' + apps.bash.vars.translateDir(args));
+                        if(args.length > 0){
+                            for(var i in args){
+                                if(typeof apps.bash.vars.getRealDir(args[i]) === 'object'){
+                                    eval('delete ' + apps.bash.vars.translateDir(args[i]));
+                                }else{
+                                    throw 'Cannot delete ' + args[i] + ': is not a directory';
+                                }
+                            }
+                        }else{
+                            throw 'No files provided';
+                        }
                     }
                 },
                 {
                     name: 'touch',
-                    usage: 'touch &lt;file&gt;',
-                    desc: 'Creates an empty file.',
+                    usage: 'touch [file]...',
+                    desc: 'Creates empty files',
                     action: function(args){
+                        if(args.length > 0){
+                            for(var i in args){
+                                if(!apps.bash.vars.getRealDir(args[i])){
+                                    eval(apps.bash.vars.translateDir(args[i]) + '=""');
+                                }else{
+                                    throw 'Cannot create ' + args[i] + ': already exists';
+                                }
+                            }
+                        }else{
+                            throw 'No files provided';
+                        }
                         if(!eval(apps.bash.vars.translateDir(args))){
                             eval(apps.bash.vars.translateDir(args) + '= ""');
                         }
@@ -4638,28 +4967,32 @@ c(function(){
                 },
                 {
                     name: 'mkdir',
-                    usage: 'mkdir &lt;dirname&gt;',
-                    desc: 'Creates a blank directory.',
+                    usage: 'mkdir [directory]...',
+                    desc: 'Creates blank directories.',
                     action: function(args){
-                        this.vars.first = 1;
-                        this.vars.stack = args.split('/');
-                        for(var i in this.vars.stack){
-                            if(this.vars.first){
-                                this.vars.trace = this.vars.stack[i];
-                                this.vars.first = 0;
-                            }else{
-                                this.vars.trace += '/' + this.vars.stack[i];
-                            }
-                            if(typeof apps.bash.vars.getRealDir(this.vars.trace) !== 'object'){
-                                if(apps.bash.vars.getRealDir(this.vars.trace) === undefined){
-                                    eval(apps.bash.vars.translateDir(this.vars.trace) + ' = {}');
-                                    apps.bash.vars.echo('Created dir ' + this.vars.trace);
-                                }else{
-                                    apps.bash.vars.echo('Failed to create dir - traced into file');
-                                    break;
+                        if(args.length > 0){
+                            for(var item in args){
+                                this.vars.first = 1;
+                                this.vars.stack = args[item].split('/');
+                                for(var i in this.vars.stack){
+                                    if(this.vars.first){
+                                        this.vars.trace = this.vars.stack[i];
+                                        this.vars.first = 0;
+                                    }else{
+                                        this.vars.trace += '/' + this.vars.stack[i];
+                                    }
+                                    if(typeof apps.bash.vars.getRealDir(this.vars.trace) !== 'object'){
+                                        if(apps.bash.vars.getRealDir(this.vars.trace) === undefined){
+                                            eval(apps.bash.vars.translateDir(this.vars.trace) + ' = {}');
+                                        }else{
+                                            throw 'Failed to create ' + args[item] + ": " + this.vars.trace + ' already exists';
+                                        }
+                                    }
                                 }
                             }
-                        } 
+                        }else{
+                            throw 'No names given';
+                        }
                     },
                     vars: {
                         first: 1,
@@ -4672,8 +5005,7 @@ c(function(){
                     usage: 'sudo [command]',
                     desc: 'obselete function to run command as root; all users already root but the function still works',
                     action: function(args){
-                        apps.bash.vars.echo('Root access already permitted...');
-                        apps.bash.vars.execute(args);
+                        return apps.bash.vars.execute(args.join(' '), 1);
                     }
                 },
                 {
@@ -4681,15 +5013,23 @@ c(function(){
                     usage: 'su',
                     desc: 'Obselete function to go root; does not work on aOS because all users are root',
                     action: function(args){
-                        apps.bash.vars.echo('Root access already permitted.');
+                        
                     }
                 },
                 {
                     name: 'cat',
                     usage: 'cat &lt;file&gt;',
-                    desc: 'All this supports so far is printing the contents of a file, as it appears to JavacScript.',
+                    desc: 'Get the contents of a file, as it appears to JavaScript.',
                     action: function(args){
-                        apps.bash.vars.echo(apps.bash.vars.getRealDir(args));
+                        if(args.length > 0){
+                            if(typeof apps.bash.vars.getRealDir(args[0]) !== "undefined"){
+                                return apps.bash.vars.getRealDir(args[0]);
+                            }else{
+                                throw args[0] + ': No such file or directory';
+                            }
+                        }else{
+                            throw 'No file provided';
+                        }
                     }
                 },
                 {
@@ -4698,7 +5038,7 @@ c(function(){
                     desc: 'Displays a fortune for you!',
                     action: function(args){
                         var rand = Math.floor(Math.random() * this.vars.fortunes.length);
-                        apps.bash.vars.echo(this.vars.fortunes[rand]);
+                        return this.vars.fortunes[rand];
                     },
                     vars: {
                         fortunes: [
@@ -5250,6 +5590,9 @@ c(function(){
                                     apps.settings.vars.togDarkMode(1);
                                 }
                             }
+                            if(typeof USERFILES.APP_STN_MOBILEMODE === "string"){
+                                apps.settings.vars.setMobileMode(USERFILES.APP_STN_MOBILEMODE, 1)
+                            }
                             if(typeof USERFILES.APP_STN_LIVEBG_ENABLED === "string"){
                                 if(USERFILES.APP_STN_LIVEBG_ENABLED === "1"){
                                     apps.settings.vars.togLiveBg(1);
@@ -5300,6 +5643,12 @@ c(function(){
                                     apps.settings.vars.setFadeDistance("0.5", 1);
                                 }, 1000);
                             }
+                            if(typeof USERFILES.APP_STN_PINNEDAPPS === "string"){
+                                pinnedApps = JSON.parse(USERFILES.APP_STN_PINNEDAPPS);
+                                for(var i in pinnedApps){
+                                    getId('icn_' + pinnedApps[i]).style.display = 'inline-block';
+                                }
+                            }
                         }
                         
                         // google play settings
@@ -5310,7 +5659,15 @@ c(function(){
                             if(USERFILES.APP_STN_SETTING_AERO !== "0"){
                                 apps.settings.vars.togAero(1);
                             }
-                            apps.prompt.vars.notify('Looks like you logged in through Google Play!<br>These settings were automatically set for you...<br><br>Performance Mode is on.<br>Screen scaling set to 1/2 if your device is 1080p or higher.<br>Tap a titlebar on a window, and then click somewhere else again, to move  a window. You can also resize them on the bottom-right corner.', [], function(){}, 'Google Play', 'appicons/ds/aOS.png');
+                            
+                            try{
+                                if(localStorage.getItem('notifyGPlay') !== "1"){
+                                    localStorage.setItem('notifyGPlay', "1");
+                                    apps.prompt.vars.notify('Looks like you logged in through Google Play!<br>These settings were automatically set for you...<br><br>Performance Mode is on.<br>Screen scaling set to 1/2 if your device is 1080p or higher.<br>Tap a titlebar on a window, and then click somewhere else again, to move  a window. You can also resize them on the bottom-right corner.', [], function(){}, 'Google Play', 'appicons/ds/aOS.png');
+                                }
+                            }catch(localStorageNotSupported){
+                                apps.prompt.vars.notify('Looks like you logged in through Google Play!<br>These settings were automatically set for you...<br><br>Performance Mode is on.<br>Screen scaling set to 1/2 if your device is 1080p or higher.<br>Tap a titlebar on a window, and then click somewhere else again, to move  a window. You can also resize them on the bottom-right corner.', [], function(){}, 'Google Play', 'appicons/ds/aOS.png');
+                            }
                         }
                         
                         if(sessionStorage.getItem('fullscreen') === 'true'){
@@ -5458,11 +5815,6 @@ c(function(){
                         option: 'Test Performance',
                         description: function(){return 'Use the Function Grapher app to measure performance OS performance. The information displayed is the time in total since the graph had started, to completion. The bottom of the graph is millisecond 0. Each 1 bar higher is 1 millisecond.'},
                         buttons: function(){return '<button onClick="openapp(apps.graph,\'dsktp\');getId(\'GphInput\').value=\'perfCheck(\\\'graph\\\')/1000-10\';getId(\'GphColor\').value=\'#FF7F00\';perfStart(\'graph\');apps.graph.vars.graph();getId(\'GphStatus\').innerHTML+=\'PerfCheck took \'+(perfCheck(\'graph\')/1000)+\' milliseconds<br>\'">Do Performance Test</button>'}
-                    },
-                    mobileMode: {
-                        option: 'Mobile Mode',
-                        description: function(){return 'Extremely experimental mobile mode for aOS. aOS will likely be very unstable with this enabled, so the setting will not be saved.'},
-                        buttons: function(){return '<button onClick="apps.settings.vars.toggleMobileMode()">Toggle</button>'}
                     }
                     */
                 },
@@ -5473,8 +5825,16 @@ c(function(){
                     image: 'settingIcons/beta/info.png',
                     copyright: {
                         option: 'Copyright Notice',
-                        description: function(){return '&copy; <i>2016 Aaron Adams</i>'}, //         <-- COPYRIGHT NOTICE
-                        buttons: function(){return 'By using this site you are accepting the small cookie the filesystem relies on and that all files you or your aOS apps generate will be saved on the aOS server for your convenience (and, mostly, for technical reasons).'}
+                        description: function(){return 'AaronOS is &copy; <i>2016 Aaron Adams</i>'}, //         <-- COPYRIGHT NOTICE
+                        buttons: function(){return 'By using this site you are accepting the small cookie the filesystem relies on and that all files you or your aOS apps generate will be saved on the aOS server for your convenience (and, mostly, for technical reasons).' +
+                            function(){
+                                if(window.location.href.indexOf('https://aaron-os-mineandcraft12.c9.io/') !== 0){
+                                    return '<br><br>This project is a fork of AaronOS. The official AaronOS project is hosted at <a href="https://aaron-os-mineandcraft12.c9.io/aosBeta.php">https://aaron-os-mineandcraft12.c9.io/aosBeta.php</a><br><br>The above copyright notice applies to all code and original resources carried over from Aaron Adams\' original, official AaronOS project.';
+                                }else{
+                                    return '<br><br>The AaronOS project is sponsored by Spiderling Studios, which is in turn sponsored by your generous Patreon Pledge. Click the Spiderling banner to donate!<br><br><a target="_blank" href="https://www.patreon.com/spiderlingstudio" class="cursorPointer"><img src="spiderling.png" style="box-shadow:0 0 3px #000;width:100%;margin-left:-3px;"></a>';
+                                }
+                            }()
+                        }
                     },
                     osID: {
                         option: 'aOS ID',
@@ -5495,6 +5855,14 @@ c(function(){
                         option: 'Contact',
                         description: function(){return 'Having issues? Need help? Something broken on aOS? Want to suggest changes or features? Have some other need to contact me? Feel free to contact me below!'},
                         buttons: function(){return 'Email: <a href="mailto:mineandcraft12@gmail.com">mineandcraft12@gmail.com</a> | Messaging app: my username is "{ADMIN} MineAndCraft12"'}
+                    },
+                    dataCollect: {
+                        option: 'Anonymous Data Collection',
+                        description: function(){return '<span class="liveElement" liveVar="numtf(apps.settings.vars.collectData)">' + numtf(apps.settings.vars.collectData) + '</span>'},
+                        buttons: function(){return '<a href="privacy.txt" target="_blank">Privacy Policy</a><br>' +
+                            '<button onclick="apps.settings.vars.collectData = -1 * apps.settings.vars.collectData + 1">Toggle</button><br>' +
+                            'All ongoing data collection campaigns will be detailed in full here:' +
+                            apps.settings.vars.getDataCampaigns()}
                     },
                     /*
                     googlePlay: {
@@ -5552,11 +5920,6 @@ c(function(){
                         option: 'Network and Battery Status',
                         description: function(){return 'Network Online: <span class="liveElement" liveVar="window.navigator.onLine">' + window.navigator.onLine + '</span>. Battery Level (if -100, battery not detected): <span class="liveElement" liveVar="Math.round(batteryLevel * 100)">' + Math.round(batteryLevel * 100) + '</span>'},
                         buttons: function(){return 'These values are updated live as of aOS A1.2.8'}
-                    },
-                    dataCollect: {
-                        option: 'Anonymous Data Collection',
-                        description: function(){return '<span class="liveElement" liveVar="numtf(apps.settings.vars.collectData)">' + numtf(apps.settings.vars.collectData) + '</span>'},
-                        buttons: function(){return '<button onclick="apps.settings.vars.collectData = -1 * apps.settings.vars.collectData + 1">Toggle</button>'}
                     },
                     textLanguage: {
                         option: 'Text Language',
@@ -5624,6 +5987,11 @@ c(function(){
                         option: 'Dark Mode',
                         description: function(){return 'Makes your aOS apps use either a light or dark background. Some apps may need to be restarted to see changes.'},
                         buttons: function(){return '<button onclick="apps.settings.vars.togDarkMode()">Toggle</button>'}
+                    },
+                    mobileMode: {
+                        option: 'Mobile Mode',
+                        description: function(){return 'Changes various bits of AaronOS to be better suited for phones and small screens. EXPERIMENTAL'},
+                        buttons: function(){return '<button onclick="apps.settings.vars.setMobileMode(0)">Turn Off</button> <button onclick="apps.settings.vars.setMobileMode(1)">Turn On</button> <button onclick="apps.settings.vars.setMobileMode(2)">Automatic</button>'}
                     },
                     windowColor: {
                         option: 'Window Color',
@@ -6110,15 +6478,6 @@ c(function(){
                     apps.savemaster.vars.save('APP_STN_screenscale', newScale, 1);
                 }
             },
-            toggleMobileMode: function(){
-                if(mobileMode){
-                    getId('mobileStyle').innerHTML = "";
-                    mobileMode = 0;
-                }else{
-                    getId('mobileStyle').innerHTML = "button,input{padding:1em !important;}.winHTML{transform-origin:0 100%;}";
-                    mobileMode = 1;
-                }
-            },
             togDarkMode: function(nosave){
                 if(darkMode){
                     darkMode = 0;
@@ -6130,6 +6489,21 @@ c(function(){
                 if(!nosave){
                     apps.savemaster.vars.save('APP_STN_DARKMODE', darkMode, 1);
                 }
+            },
+            setMobileMode: function(type, nosave){
+                if(type == 1){
+                    setMobile(1);
+                    autoMobile = 0;
+                }else if(type == 2){
+                    autoMobile = 1;
+                }else{
+                    setMobile(0);
+                    autoMobile = 0;
+                }
+                if(!nosave){
+                    apps.savemaster.vars.save('APP_STN_MOBILEMODE', type, 1);
+                }
+                checkMobileSize();
             },
             liveBackgroundEnabled: 0,
             liveBackgroundURL: '',
@@ -6247,7 +6621,7 @@ c(function(){
                 }
             },
             noraHelpTopics: 1,
-            collectData: 1,
+            collectData: 0,
             currVoiceStr: '',
             currLangStr: '',
             currNoraPhrase: 'listen computer',
@@ -6277,6 +6651,27 @@ c(function(){
             },
             setDebugLevel: function(level){
                 dbgLevel = level;
+            },
+            dataCampaigns: [
+                [
+                    'Example Campaign <i>(not real)</i>',
+                    ['Session Error Logs', 'etc other useful stuff']
+                ]
+            ],
+            getDataCampaigns: function(){
+                if(this.dataCampaigns.length > 0){
+                    var str = "";
+                    for(var i in this.dataCampaigns){
+                        str += '<br>' + this.dataCampaigns[i][0];
+                        for(var j in this.dataCampaigns[i][1]){
+                            str += '<br>-&nbsp;' + this.dataCampaigns[i][1][j];
+                        }
+                    }
+                    str += '<br>';
+                    return str;
+                }else{
+                    return '<i>None found.</i><br>';
+                }
             },
             FILcanWin: 0,
             togFILwin: function(){
@@ -7681,10 +8076,19 @@ c(function(){
             "12/17/2018: B0.9.1.6\n : Dashboard and Apps Browser are now alphabetized. How did I miss that?\n\n" +
             "12/20/2018: B0.9.1.7\n : aOS now checks that requests come from the actual current server, rather than checking specifically for the aOS official server. This means aOS should now, in theory, be portable.\n : aOS now checks for images in the folder (if any) that it resides in, instead of automatically picking the root folder.\n\n" +
             "12/22/2018: B0.9.1.8\n : IE11 no longer rejects aOS for containing spread notation (...) in its source code.\n + On Internet Explorer, Windowblur defaults to off.\n : Fixed double prompts appearing on non-Chrome browsers; should only appear once now.\n\n"  +
-            "12/23/2018: B0.9.1.9\n : Fixed issue that caused portability to not actually work.",
+            "12/23/2018: B0.9.1.9\n : Fixed issue that caused portability to not actually work.\n\n" +
+            "12/24/2018: B0.9.1.10\n + Begun work on experimental replacement file manager.\n\n" +
+            "01/01/2019: B0.9.1.11\n + AaronOS now has an EULA for those who wish to deploy aOS on their own server or otherwise use its code, available at /eula.txt\n + If the code is hosted on an unofficial server, a note will be dynamically added next to the Copyright Notice in Settings -> Information, with a link to the official AaronOS server. AaronOS deployers - this note is not under any circumstances to be removed or its text altered in any way, with the exception of being moved to another location at the top of an easily-accessible menu in Settings, alongside its Copyright Notice.\n + Apps can now be pinned to the taskbar.\n : Fixed Camera app.\n : Changed question mark in File Manager to refresh symbol.\n : Adjusted Mint-Y theme.\n : Google Play prompt now only occurs once.\n\n" +
+            "01/02/2019: B0.9.2.0\n + Added Text To Binary app.\n\n" +
+            "01/04/2019: B0.9.3.0\n + Text To Binary app can now decode images.\n\n" +
+            "01/05/2019: B0.9.3.1\n : Minor memory fixes in Text To Binary\n + Text To Binary now has a standalone page at binary.php\n\n" +
+            "01/07/2019: B0.9.3.2\n : Battery widget is hidden on devices/browsers that don't support it.\n\n" +
+            "01/17/2019: B0.9.4.0\n + New experimental Mobile Mode\n : Windows can now be correctly resized by any edge.\n + Two new battery widget modes, Text and Old.\n + JS Console now sanitizes input and catches errors.\n : App taskbar icons are now above taskbar widgets, instead of vice-versa.\n\n" +
+            "01/20/2019: B0.9.5.0\n : The Psuedo-Bash Console has had a complete rewrite!\n + Apps can now run psuedo-bash code on their own with apps.bash.vars.execute()\n : Pipes now work correctly in Bash.\n : grep is now case insensitive\n\n" +
+            "01/26/2019: B0.9.5.1\n : Data Collection is now false by default, oops.",
             oldVersions: "aOS has undergone many stages of development. Here\'s all older versions I've been able to recover.\nV0.9     https://aaron-os-mineandcraft12.c9.io/_old_index.php\nA1.2.5   https://aaron-os-mineandcraft12.c9.io/_backup/index.1.php\nA1.2.6   http://aos.epizy.com/aos.php\nA1.2.9.1 https://aaron-os-mineandcraft12.c9.io/_backup/index9_25_16.php\nA1.4     https://aaron-os-mineandcraft12.c9.io/_backup/"
     }; // changelog: (using this comment to make changelog easier for me to find)
-    window.aOSversion = 'B0.9.1.9 (12/23/2018) r0';
+    window.aOSversion = 'B0.9.5.1 (01/26/2019) r0';
     document.title = 'aOS ' + aOSversion;
     getId('aOSloadingInfo').innerHTML = 'Initializing Properties Viewer';
 });
@@ -7842,7 +8246,7 @@ c(function(){
                     '<div id="FILtopdiv" style="width:694px; height:25px;">' +
                     '<div class="cursorPointer" style="width:34px; height:18px; padding-top:2px; left:5px; top:4px; background-color:' + darkSwitch('#FFF', '#000') + '; color:' + darkSwitch('#333', '#CCC') + '; border-top-left-radius:10px; border-bottom-left-radius:10px; text-align:center;" onClick="apps.files.vars.back()">&larr;&nbsp;</div>' +
                     '<div class="cursorPointer" style="width:24px; border-left:1px solid #333; height:18px; padding-top:2px; left:30px; top:4px; background-color:' + darkSwitch('#FFF', '#000') + '; color:' + darkSwitch('#333', '#CCC') + '; border-top-left-radius:10px; border-bottom-left-radius:10px; text-align:center;" onClick="apps.files.vars.home()">H</div>' +
-                    '<div class="cursorPointer" style="width:24px; height:18px; padding-top:2px; right:6px; top:4px; background-color:' + darkSwitch('#FFF', '#000') + '; color:' + darkSwitch('#333', '#CCC') + '; border-top-right-radius:10px; border-bottom-right-radius:10px; text-align:center;" onClick="apps.files.vars.update()">?</div>' +
+                    '<div class="cursorPointer" style="width:24px; height:18px; padding-top:2px; right:6px; top:4px; background-color:' + darkSwitch('#FFF', '#000') + '; color:' + darkSwitch('#333', '#CCC') + '; border-top-right-radius:10px; border-bottom-right-radius:10px; text-align:center;" onClick="apps.files.vars.update()">&#x21BB;</div>' +
                     '</div>' +
                     '<div style="width:694px; height:368px; top:25px; background-color:' + darkSwitch('#FFF', '#000') + '; overflow:scroll; background-repeat:no-repeat; background-position:center" id="FILcntn"></div>' +
                     '<div id="FILpath" style="left:55px; background-color:' + darkSwitch('#FFF', '#000') + '; font-family:monospace; height:' + (25 + scrollHeight) + 'px; line-height:25px; vertical-align:middle; width:609px; border-top-left-radius:5px; border-top-right-radius:5px; overflow-x:scroll;"><div id="FILgreen" style="width:0;height:100%;"></div>this.is.a.file.path.example.for.the.thingy.and.it.is.very.useful.because.it.tells.you.where.you.are.in.the.thing</div>'
@@ -8041,6 +8445,228 @@ c(function(){
                 c(function(){getId('FILtbl').innerHTML += apps.files.vars.currContentStr;getId("FILgreen").className = '';getId('FILgreen').style.backgroundColor = "#FFF";getId("FILgreen").style.display = "none";getId("FILcntn").style.backgroundImage="";getId('FILcntn').classList.remove('cursorLoadDark')});
             }
         }, 0, "files", "appicons/ds/FIL.png"
+    );
+    getId('aOSloadingInfo').innerHTML = 'Initializing Files 2';
+});
+c(function(){
+    m('init FIL');
+    apps.files2 = new Application(
+        "FIL",
+        "File Manager 2",
+        1,
+        function(launchType){
+            if(!this.appWindow.appIcon){
+                this.appWindow.paddingMode(0);
+                this.appWindow.setDims(parseInt(getId('desktop').style.width, 10) / 2 - 350, parseInt(getId('desktop').style.height, 10) / 2 - 200, 700, 400, 1);
+            }
+            this.appWindow.setCaption("File Manager 2");
+            this.appWindow.openWindow();
+            if(launchType === 'dsktp'){
+                this.vars.currLoc = '';
+                getId('win_files2_html').style.background = "none";
+                this.appWindow.setContent(
+                    '<div id="FIL2topdiv" style="width:694px; height:25px;">' +
+                    '<div class="cursorPointer" style="width:34px; height:18px; padding-top:2px; left:5px; top:4px; background-color:' + darkSwitch('#FFF', '#000') + '; color:' + darkSwitch('#333', '#CCC') + '; border-top-left-radius:10px; border-bottom-left-radius:10px; text-align:center;" onClick="apps.files2.vars.back()">&larr;&nbsp;</div>' +
+                    '<div class="cursorPointer" style="width:24px; border-left:1px solid #333; height:18px; padding-top:2px; left:30px; top:4px; background-color:' + darkSwitch('#FFF', '#000') + '; color:' + darkSwitch('#333', '#CCC') + '; border-top-left-radius:10px; border-bottom-left-radius:10px; text-align:center;" onClick="apps.files2.vars.home()">H</div>' +
+                    '<div class="cursorPointer" style="width:24px; height:18px; padding-top:2px; right:6px; top:4px; background-color:' + darkSwitch('#FFF', '#000') + '; color:' + darkSwitch('#333', '#CCC') + '; border-top-right-radius:10px; border-bottom-right-radius:10px; text-align:center;" onClick="apps.files2.vars.update()">&#x21BB;</div>' +
+                    '</div>' +
+                    '<div style="width:694px; height:368px; top:25px; background-color:' + darkSwitch('#FFF', '#000') + '; overflow:scroll; background-repeat:no-repeat; background-position:center" id="FIL2cntn"></div>' +
+                    '<div id="FIL2path" style="left:55px; background-color:' + darkSwitch('#FFF', '#000') + '; font-family:monospace; height:' + (25 + scrollHeight) + 'px; line-height:25px; vertical-align:middle; width:609px; border-top-left-radius:5px; border-top-right-radius:5px; overflow-x:scroll;"><div id="FIL2green" style="width:0;height:100%;"></div>this.is.a.file.path.example.for.the.thingy.and.it.is.very.useful.because.it.tells.you.where.you.are.in.the.thing</div>'
+                );
+            }
+            if(typeof this.appWindow.dimsSet !== 'function'){
+                this.appWindow.dimsSet = function(){
+                    getId('FIL2topdiv').style.width = this.windowH - 6 + 'px';
+                    getId('FIL2cntn').style.width = this.windowH - 6 + 'px';
+                    getId('FIL2cntn').style.height = this.windowV - 32 + 'px';
+                    getId('FIL2path').style.width = this.windowH - 91 + 'px';
+                    getId('FIL2tbl').style.width = this.windowH - 5 - scrollHeight + 'px';
+                };
+            }
+            this.vars.update();
+        },
+        function(signal){
+            switch(signal){
+                case "forceclose":
+                    //this.vars = this.varsOriginal;
+                    this.appWindow.closeWindow();
+                    this.appWindow.closeIcon();
+                    break;
+                case "close":
+                    if(getId("FIL2green").style.backgroundColor !== "rgb(170, 255, 170)"){
+                        this.appWindow.closeWindow();
+                        this.appWindow.setContent("");
+                    }else{
+                        apps.prompt.vars.alert('Please allow Files to finish searching the current folder.', 'Oops, I almost broke stuff.', function(){}, 'Files');
+                    }
+                    break;
+                case "checkrunning":
+                    if(this.appWindow.appIcon){
+                        return 1;
+                    }else{
+                        return 0;
+                    }
+                case "shrink":
+                    this.appWindow.closeKeepTask();
+                    break;
+                case "USERFILES_DONE":
+                    
+                    break;
+                case 'shutdown':
+                        
+                    break;
+                default:
+                    doLog("No case found for '" + signal + "' signal in app '" + this.dsktpIcon + "'", "#F00");
+            }
+        },
+        {
+            appInfo: 'The official AaronOS File Manager, version 2. Use it to manage your personal files and to view aOS code. At the moment, only plain-text userfiles are supported.',
+            currLoc: '',
+            back: function(){
+                this.currLoc = this.currLoc.split(".");
+                this.currLoc.pop();
+                this.currLoc = this.currLoc.join(".");
+                this.update();
+            },
+            home: function(){
+                this.currLoc = '';
+                this.update();
+            },
+            next: function(nextName){
+                if(getId("FIL2green").style.backgroundColor !== "rgb(170, 255, 170)"){
+                    if(this.currLoc === ''){
+                        this.currLoc = nextName;
+                    }else{
+                        this.currLoc += "." + nextName;
+                    }
+                    this.update();
+                }else{
+                    apps.prompt.vars.alert('Please allow Files to finish searching the current folder.', 'Oops, I almost broke stuff.', function(){}, 'Files');
+                }
+            },
+            filetype: function(type){
+                switch(type){
+                    case 'object':
+                        return 'folder';
+                    case 'string':
+                        return 'text';
+                    case 'function':
+                        return 'code';
+                    case 'boolean':
+                        return 'T/F';
+                    case 'undefined':
+                        return 'nothing';
+                    case 'number':
+                        return 'value';
+                    default:
+                        return type;
+                }
+            },
+            currTotal: 0,
+            currItem: 0,
+            currEffect: 0,
+            currContentStr: '',
+            update: function(){
+                this.currContentStr = '';
+                getId("FIL2green").style.backgroundColor = 'rgb(170, 255, 170)';
+                getId("FIL2green").style.width = "0";
+                getId("FIL2cntn").style.backgroundImage = 'url(/loadDark.gif)';
+                // getId("FILcntn").style.cursor = cursors.loadDark;
+                getId('FIL2cntn').classList.add('cursorLoadDark');
+                getId("FIL2cntn").innerHTML =
+                    '<table id="FIL2tbl" style="width:' + (apps.files2.appWindow.windowH - 5 - scrollHeight) + 'px; position:absolute; top:' + scrollHeight + 'px; margin:auto; font-family:monospace;">' +
+                    '<tr>' +
+                    '<th>Filename</th>' +
+                    '<th>Filetype</th>' +
+                    '</tr>' +
+                    '</table>';
+                getId("FIL2tbl").style.marginTop = scrollHeight;
+                if(this.currLoc === ''){
+                    getId("FIL2path").innerHTML = '<div id="FIL2green" style="height:100%;background-color:rgb(170, 255, 170)"></div>';
+                    getId("FIL2tbl").innerHTML +=
+                        '<tr class="cursorPointer" onClick="apps.files2.vars.next(\'files\')" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'files\\\');toTop(apps.properties)\'])">' +
+                        '<td>files</td>' +
+                        '<td>folder</td>' +
+                        '</tr><tr class="cursorPointer" onClick="apps.files2.vars.next(\'apps\')" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'apps\\\');toTop(apps.properties)\'])">' +
+                        '<td>apps</td>' +
+                        '<td>folder</td>' +
+                        '</tr><tr class="cursorPointer" onClick="apps.files2.vars.next(\'widgets\')" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'widgets\\\');toTop(apps.properties)\'])">' +
+                        '<td>widgets</td>' +
+                        '<td>folder</td>' +
+                        '</tr><tr class="cursorPointer" onClick="apps.files2.vars.next(\'USERFILES\')" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'USERFILES\\\');toTop(apps.properties)\'])">' +
+                        '<td>USERFILES</td>' +
+                        '<td>folder</td>' +
+                        function(){
+                            if(apps.settings.vars.FILcanWin){
+                                return '</tr><tr class="cursorPointer" onClick="apps.files2.vars.next(\'window\')" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'window\\\');toTop(apps.properties)\'])">' +
+                                    '<td style="color:#F00">Everything</td>' +
+                                    '<td>Debug</td>';
+                            }else{
+                                return '';
+                            }
+                        }() +
+                        '</tr>';
+                }else{
+                    getId("FIL2path").innerHTML = '<div id="FIL2green" class="liveElement" liveTarget="style.width" liveVar="apps.files2.vars.currItem/apps.files2.vars.currTotal*100+\'%\'" style="height:100%;background-color:rgb(170, 255, 170);box-shadow:0 0 20px 10px rgb(170, 255, 170)"></div><div>' + this.currLoc + '</div>';
+                    this.currTotal = objLength(eval(this.currLoc));
+                    this.currItem = 0;
+                    for(var findElem in eval(this.currLoc)){
+                        if(typeof(eval(this.currLoc)[findElem]) === "string" || typeof(eval(this.currLoc)[findElem]) === "number" || typeof(eval(this.currLoc)[findElem]) === "function" || typeof(eval(this.currLoc)[findElem]) === "boolean" || typeof(eval(this.currLoc)[findElem]) === "undefined"){
+                            if((this.currLoc + "." + findElem).substring(0, 20) !== "USERFILES.MOUSEDATA_"){
+                                if(this.currLoc === "USERFILES"){
+                                    c(function(arg){
+                                        //getId("FILtbl").innerHTML +=
+                                        apps.files2.vars.currContentStr +=
+                                            '<tr class="cursorPointer" onClick="openapp(apps.notepad, \'open\');apps.notepad.vars.openFile(\'' + arg + '\');requestAnimationFrame(function(){toTop(apps.notepad)})" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\', \'ctxMenu/beta/x.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'' + apps.files2.vars.currLoc + '.' + arg + '\\\');toTop(apps.properties)\', \'+Delete\', \'apps.savemaster.vars.delete(\\\'' + arg + '\\\');\'])">' +
+                                            '<td>' + arg + '</td>' +
+                                            '<td>' + apps.files2.vars.filetype(typeof(eval(apps.files2.vars.currLoc)[arg])) + '</td>' +
+                                            '</tr>';
+                                        apps.files2.vars.currItem++;
+                                        //getId('FILgreen').style.width = Math.floor(apps.files.vars.currItem / apps.files.vars.currTotal * 100) + "%";
+                                    }, findElem);
+                                }else{
+                                    c(function(arg){
+                                        // getId("FILtbl").innerHTML +=
+                                        apps.files2.vars.currContentStr +=
+                                            '<tr class="cursorPointer" onClick="openapp(apps.notepad, \'open\');apps.notepad.vars.openFile(\'' + apps.files2.vars.currLoc + '.' + arg + '\');requestAnimationFrame(function(){toTop(apps.notepad)})" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\', \'ctxMenu/beta/x.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'' + apps.files2.vars.currLoc + '.' + arg + '\\\');toTop(apps.properties)\', \'_Delete\', \'\'])">' +
+                                            '<td>' + arg + '</td>' +
+                                            '<td>' + apps.files2.vars.filetype(typeof(eval(apps.files2.vars.currLoc)[arg])) + '</td>' +
+                                            '</tr>';
+                                        apps.files2.vars.currItem++;
+                                        //getId('FILgreen').style.width = Math.floor(apps.files.vars.currItem / apps.files.vars.currTotal * 100) + "%";
+                                    }, findElem);
+                                }
+                            }
+                        }else{
+                            if(this.currLoc === "apps"){
+                                c(function(arg){
+                                    // getId("FILtbl").innerHTML +=
+                                    apps.files2.vars.currContentStr +=
+                                        '<tr class="cursorPointer" onClick="apps.files2.vars.next(\'' + arg + '\')" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/window.png\', \'ctxMenu/beta/file.png\', \'\'], \' Launch App\', \'openapp(apps.' + arg + ', \\\'dsktp\\\')\', \'+Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'' + apps.files2.vars.currLoc + '.' + arg + '\\\');toTop(apps.properties)\'])">' +
+                                        '<td>' + arg + '</td>' +
+                                        '<td>' + apps.files2.vars.filetype(typeof(eval(apps.files2.vars.currLoc)[arg])) + '</td>' +
+                                        '</tr>';
+                                    apps.files2.vars.currItem++;
+                                    //getId('FILgreen').style.width = Math.floor(apps.files.vars.currItem / apps.files.vars.currTotal * 100) + "%";
+                                }, findElem);
+                            }else{
+                                c(function(arg){
+                                    // getId("FILtbl").innerHTML +=
+                                    apps.files2.vars.currContentStr +=
+                                        '<tr class="cursorPointer" onClick="apps.files2.vars.next(\'' + arg + '\')" oncontextmenu="ctxMenu([[event.pageX, event.pageY, \'ctxMenu/beta/file.png\', \'ctxMenu/beta/x.png\'], \' Properties\', \'apps.properties.main(\\\'openFile\\\', \\\'' + apps.files2.vars.currLoc + '.' + arg + '\\\');toTop(apps.properties)\', \'_Delete\', \'\'])">' +
+                                        '<td>' + arg + '</td>' +
+                                        '<td>' + apps.files2.vars.filetype(typeof(eval(apps.files2.vars.currLoc)[arg])) + '</td>' +
+                                        '</tr>';
+                                    apps.files2.vars.currItem++;
+                                    //getId('FILgreen').style.width = Math.floor(apps.files.vars.currItem / apps.files.vars.currTotal * 100) + "%";
+                                }, findElem);
+                            }
+                        }
+                    }
+                }
+                c(function(){getId('FIL2tbl').innerHTML += apps.files2.vars.currContentStr;getId("FIL2green").className = '';getId('FIL2green').style.backgroundColor = "#FFF";getId("FIL2green").style.display = "none";getId("FIL2cntn").style.backgroundImage="";getId('FIL2cntn').classList.remove('cursorLoadDark')});
+            }
+        }, 0, "files2", "appicons/ds/FIL.png"
     );
     getId('aOSloadingInfo').innerHTML = 'Initializing Changelog';
 });
@@ -9932,7 +10558,8 @@ c(function(){
                 window.navigator.mediaDevices.getUserMedia({"video": true}).then(
                     function(stream){
                         apps.camera.vars.streamObj = stream;
-                        getId('CAMvideo').src = window.webkitURL.createObjectURL(stream);
+                        //getId('CAMvideo').src = window.webkitURL.createObjectURL(stream);
+                        getId('CAMvideo').srcObject = stream;
                         getId('CAMvideo').play();
                     }
                 ).catch(
@@ -11841,16 +12468,21 @@ c(function(){
             }
         }, 0, 'minesweeper', 'appicons/ds/aOS.png'
     );
-    getId('aOSloadingInfo').innerHTML = 'Finalizing...';
+    getId('aOSloadingInfo').innerHTML = 'Initializing Text to Binary...';
 });
-/*
 c(function(){
-    apps.clicker = new Application(
-        'Clk',
-        'aOS Clicker',
+    apps.textBinary = new Application(
+        'BIN',
+        'Text to Binary',
         0,
         function(){
-            
+            if(!this.appIcon){
+                this.appWindow.setDims("auto", "auto", 800, 500);
+                this.appWindow.setCaption('Text to Binary');
+                getId('win_textBinary_html').style.overflow = 'auto';
+                this.appWindow.setContent('Use this tool to convert text into either binary text or a binary image. (WORK IN PROGRESS)<br><br><button onclick="apps.textBinary.vars.textToBW(0)">BW Image (large)</button> <button onclick="apps.textBinary.vars.textToGS(0)">GS Image (medium)</button> <button onclick="apps.textBinary.vars.textToRGB(0)">RGB Image (small)</button><br><button onclick="apps.textBinary.vars.textToBW(1)">BW Image (invert)</button> <button onclick="apps.textBinary.vars.textToGS(255)">GS Image (invert)</button> <button onclick="apps.textBinary.vars.textToRGB(255)">RGB Image (invert)</button><br><button onclick="apps.textBinary.vars.textToBin(1)">Plain Binary</button> <button onclick="apps.textBinary.vars.textToBin(0)">Plain Binary (no spaces)</button><br><textarea id="textToBinInput" placeholder="Type or paste text here"></textarea> <div style="position:relative;display:inline-block"><label><input type="checkbox" id="textToBinAlign">Align images to binary</label><label><input type="checkbox" id="textToBinDecode">Decode PNG</label> <input type="file" id="textToBinDecodeImg" accept="image/x-png"><br><label><input type="checkbox" id="textToBinLineAlign">Align images to newlines</label></div><hr><div id="textToBinOutput"></div>');
+            }
+            this.appWindow.openWindow();
         },
         function(signal){
             switch(signal){
@@ -11873,9 +12505,7 @@ c(function(){
                     this.appWindow.closeKeepTask();
                     break;
                 case "USERFILES_DONE":
-                    if(typeof USERFILES.APP_Clk_save === "string"){
-                        apps.clicker.vars.game = JSON.parse(USERFILES.APP_Clk_save)
-                    }
+                    
                     break;
                 case 'shutdown':
                         
@@ -11885,17 +12515,382 @@ c(function(){
             }
         },
         {
-            game: {
-                clicks: 0
+            appInfo: 'Convert text into binary or an image.',
+            textToBin: function(useSpaces){
+                var binFile = getId('textToBinInput').value;
+                var binFinal = '';
+                for(var byte in binFile){
+                    binStr = binFile.charCodeAt(byte).toString(2);
+                    while(binStr.length < 8){
+                        binStr = '0' + binStr;
+                    }
+                    if(useSpaces){
+                        binFinal += binStr + ' ';
+                    }else{
+                        binFinal += binStr;
+                    }
+                }
+                getId('textToBinOutput').innerHTML = '<textarea style="width:750px;height:300px;" display="block">' + binFinal + '</textarea>';
+            },
+            textToBW: function(invert){
+                if(getId('textToBinDecode').checked && getId('textToBinDecodeImg').files.length !== 0){
+                    this.bwToText(invert);
+                }else{
+                    var alignBin = getId('textToBinAlign').checked;
+                    var alignLines = getId('textToBinLineAlign').checked;
+                    var binFile = getId('textToBinInput').value;
+                    var binFinal = [];
+                    var binLength = 0;
+                    for(var byte in binFile){
+                        var binStr = binFile.charCodeAt(byte);
+                        binFinal.push(binStr);
+                        binLength++;
+                    } // using decimals, not binary!
+                    getId('textToBinOutput').innerHTML = '(<span id="textToBinImgSize"></span>) Right Click to Copy or Save Image<br><canvas id="textToBinCanvas" oncontextmenu="event.stopPropagation();return true;"></canvas>';
+                    var bincnv = getId('textToBinCanvas');
+                    var binctx = bincnv.getContext('2d');
+                    if(alignLines){
+                        var imageSize = [0,0];
+                        var lastNewline = 0;
+                        for(var i = 0; i < binFinal.length; i++){
+                            if(binFinal[i] === 10){
+                                imageSize[1]++;
+                                if(i - lastNewline > imageSize[0]){
+                                    imageSize[0] = i - lastNewline;
+                                }
+                                lastNewline = i;
+                            }
+                        }
+                        imageSize[0]++;
+                        imageSize[1]++;
+                        
+                        imageSize[0] *= 8;
+                    }else{
+                        var imageSize = Math.floor(Math.sqrt(binLength * 8) + 1);
+                        imageSize = [imageSize,imageSize];
+                        if(alignBin && imageSize[0] % 8 !== 0){
+                            imageSize[1] += imageSize[0] % 8;
+                            imageSize[0] -= imageSize[0] % 8;
+                        }
+                    }
+                    getId('textToBinImgSize').innerHTML = imageSize[0] + 'x' + imageSize[1];
+                    bincnv.width = imageSize[0];
+                    bincnv.height = imageSize[1];
+                    bincnv.style.width = imageSize[0] + "px";
+                    bincnv.style.height = imageSize[1] + "px";
+                    // for each pixel (increment through bytes of string by 3)
+                    // make pixel on image equal to the 3 current byte items as rgb
+                    var imgRow = 0;
+                    var imgColumn = 0;
+                    var dontGoDown = 0;
+                    for(var byte = 0; byte < binLength; byte++){
+                        var currByte = (binFinal[byte] || 0).toString(2);
+                        while(currByte.length < 8){
+                            currByte = '0' + currByte;
+                        }
+                        var brightness = 0;
+                        for(var i = 0; i < 8; i++){
+                            if(invert){
+                                brightness = (1 - parseInt(currByte[i])) * 255;
+                            }else{
+                                brightness = (parseInt(currByte[i])) * 255;
+                            }
+                            binctx.fillStyle = 'rgb(' + brightness + ',' + brightness + ',' + brightness + ')';
+                            binctx.fillRect(imgColumn, imgRow, 1, 1);
+                            imgColumn++;
+                            dontGoDown = 0;
+                            if(imgColumn >= imageSize[0]){
+                                dontGoDown = 1;
+                                imgColumn = 0;
+                                imgRow++;
+                            }
+                        }
+                        if(alignLines && !dontGoDown){
+                            if(binFinal[byte] === 10){
+                                imgColumn = 0;
+                                imgRow++;
+                            }
+                        }else if(imgColumn >= imageSize[0] && !dontGoDown){
+                            imgColumn = 0;
+                            imgRow++;
+                        }
+                    }
+                }
+            },
+            textToGS: function(invert){
+                if(getId('textToBinDecode').checked && getId('textToBinDecodeImg').files.length !== 0){
+                    this.gsToText(invert);
+                }else{
+                    var alignBin = getId('textToBinAlign').checked;
+                    var alignLines = getId('textToBinLineAlign').checked;
+                    var binFile = getId('textToBinInput').value;
+                    var binFinal = [];
+                    var binLength = 0;
+                    for(var byte in binFile){
+                        var binStr = binFile.charCodeAt(byte);
+                        binFinal.push(binStr);
+                        binLength++;
+                    } // using decimals, not binary!
+                    getId('textToBinOutput').innerHTML = '(<span id="textToBinImgSize"></span>) Right Click to Copy or Save Image<br><canvas id="textToBinCanvas" oncontextmenu="event.stopPropagation();return true;"></canvas>';
+                    var bincnv = getId('textToBinCanvas');
+                    var binctx = bincnv.getContext('2d');
+                    if(alignLines){
+                        var imageSize = [0,0];
+                        var lastNewline = 0;
+                        for(var i = 0; i < binFinal.length; i++){
+                            if(binFinal[i] === 10){
+                                imageSize[1]++;
+                                if(i - lastNewline > imageSize[0]){
+                                    imageSize[0] = i - lastNewline;
+                                }
+                                lastNewline = i;
+                            }
+                        }
+                        imageSize[0]++;
+                        imageSize[1]++;
+                    }else{
+                        var imageSize = Math.floor(Math.sqrt(binLength) + 1);
+                        imageSize = [imageSize,imageSize];
+                    }
+                    getId('textToBinImgSize').innerHTML = imageSize[0] + 'x' + imageSize[1];
+                    bincnv.width = imageSize[0];
+                    bincnv.height = imageSize[1];
+                    bincnv.style.width = imageSize[0] + "px";
+                    bincnv.style.height = imageSize[1] + "px";
+                    // for each pixel (increment through bytes of string by 3)
+                    // make pixel on image equal to the 3 current byte items as rgb
+                    var imgRow = 0;
+                    var imgColumn = 0;
+                    for(var byte = 0; byte < binLength; byte++){
+                        if(invert){
+                            var brightness = 255 - (binFinal[byte] || 0);
+                        }else{
+                            var brightness = (binFinal[byte] || 0);
+                        }
+                        binctx.fillStyle = 'rgb(' + brightness + ',' + brightness + ',' + brightness + ')';
+                        binctx.fillRect(imgColumn, imgRow, 1, 1);
+                        imgColumn++;
+                        if(alignLines){
+                            if(binFinal[byte] === 10){
+                                imgColumn = 0;
+                                imgRow++;
+                            }
+                        }else if(imgColumn >= imageSize[0]){
+                            imgColumn = 0;
+                            imgRow++;
+                        }
+                    }
+                }
+            },
+            textToRGB: function(invert){
+                if(getId('textToBinDecode').checked && getId('textToBinDecodeImg').files.length !== 0){
+                    this.rgbToText(invert);
+                }else{
+                    var alignBin = getId('textToBinAlign').checked;
+                    var alignLines = getId('textToBinLineAlign').checked;
+                    var binFile = getId('textToBinInput').value;
+                    var binFinal = [];
+                    var binLength = 0;
+                    for(var byte in binFile){
+                        var binStr = binFile.charCodeAt(byte);
+                        binFinal.push(binStr);
+                        binLength++;
+                    } // using decimals, not binary!
+                    getId('textToBinOutput').innerHTML = '(<span id="textToBinImgSize"></span>) Right Click to Copy or Save Image<br><canvas id="textToBinCanvas" oncontextmenu="event.stopPropagation();return true;"></canvas>';
+                    var bincnv = getId('textToBinCanvas');
+                    var binctx = bincnv.getContext('2d');
+                    if(alignLines){
+                        var imageSize = [0,0];
+                        var lastNewline = 0;
+                        for(var i = 0; i < binFinal.length; i++){
+                            if(binFinal[i] === 10){
+                                imageSize[1]++;
+                                if(i - lastNewline > imageSize[0]){
+                                    imageSize[0] = i - lastNewline;
+                                }
+                                lastNewline = i;
+                            }
+                        }
+                        imageSize[0]++;
+                        imageSize[1]++;
+                        
+                        imageSize[0] = Math.floor(imageSize[0] * 0.3) + 1;
+                    }else{
+                        var imageSize = Math.floor(Math.sqrt(binLength / 3) + 1);
+                        imageSize = [imageSize,imageSize];
+                    }
+                    if(alignBin && imageSize[0] % 3 !== 0){
+                        imageSize[1] += imageSize[0] % 3;
+                        imageSize[0] -= imageSize[0] % 3;
+                    }
+                    getId('textToBinImgSize').innerHTML = imageSize[0] + 'x' + imageSize[1];
+                    bincnv.width = imageSize[0];
+                    bincnv.height = imageSize[1];
+                    bincnv.style.width = imageSize[0] + "px";
+                    bincnv.style.height = imageSize[1] + "px";
+                    // for each pixel (increment through bytes of string by 3)
+                    // make pixel on image equal to the 3 current byte items as rgb
+                    var imgRow = 0;
+                    var imgColumn = 0;
+                    for(var byte = 0; byte < binLength; byte += 3){
+                        if(invert){
+                            binctx.fillStyle = 'rgb(' + (255 - (binFinal[byte] || 0)) + ',' + (255 - (binFinal[byte + 1] || 0)) + ',' + (255 - (binFinal[byte + 2] || 0)) + ')';
+                        }else{
+                            binctx.fillStyle = 'rgb(' + (binFinal[byte] || 0) + ',' + (binFinal[byte + 1] || 0) + ',' + (binFinal[byte + 2] || 0) + ')';
+                        }
+                        binctx.fillRect(imgColumn, imgRow, 1, 1);
+                        imgColumn++;
+                        if(alignLines){
+                            if(binFinal[byte] === 10){
+                                imgColumn = 0;
+                                imgRow++;
+                            }else if(binFinal[byte + 1] === 10){
+                                imgColumn = 0;
+                                imgRow++;
+                            }else if(binFinal[byte + 2] === 10){
+                                imgColumn = 0;
+                                imgRow++;
+                            }
+                        }else if(imgColumn >= imageSize[0]){
+                            imgColumn = 0;
+                            imgRow++;
+                        }
+                    }
+                }
+            },
+            bwToText: function(invert){
+                var binFile = getId('textToBinDecodeImg').files[0];
+                var binUrl = URL.createObjectURL(binFile);
+                var binElement = new Image();
+                binElement.src = binUrl;
+                binElement.onload = function(){
+                    var bincnv = document.createElement('canvas');
+                    var binctx = bincnv.getContext('2d');
+                    bincnv.width = this.width;
+                    bincnv.height = this.height;
+                    binctx.drawImage(binElement, 0, 0);
+                    var binData = binctx.getImageData(0, 0, bincnv.width, bincnv.height);
+                    var binFinal = binData.data;
+                    var binStr = "";
+                    for(var i = 0; i < binFinal.length; i += 32){
+                        if(binFinal[i + 3] === 255){
+                            var binValue = 0;
+                            for(var j = i; j < i + 32; j += 4){
+                                if(invert){
+                                    var brightness = Math.round((255 - (binFinal[j] + binFinal[j + 1] + binFinal[j + 2]) / 3) / 255);
+                                }else{
+                                    var brightness = Math.round((binFinal[j] + binFinal[j + 1] + binFinal[j + 2]) / 3 / 255);
+                                }
+                                binValue += brightness * Math.pow(2, 7 - ((j - i) / 4));
+                            }
+                            if(binValue > 0 && binValue < 256){
+                                binStr += String.fromCharCode(binValue);
+                            }
+                        }
+                    }
+                    getId('textToBinOutput').innerHTML = '<textarea style="width:750px;height:300px;" id="binToTextOutput" display="block"></textarea>';
+                    getId('binToTextOutput').value = binStr;
+                    /*
+                    binFinal = null;
+                    binData = null;
+                    binctx = null;
+                    bincnv = null;
+                    binElement = null;
+                    URL.revokeObjectURL(binUrl);
+                    binUrl = null;
+                    binFile = null;
+                    */
+                    URL.revokeObjectURL(this.src);
+                }
+            },
+            gsToText: function(invert){
+                var binFile = getId('textToBinDecodeImg').files[0];
+                var binUrl = URL.createObjectURL(binFile);
+                var binElement = new Image();
+                binElement.src = binUrl;
+                binElement.onload = function(){
+                    var bincnv = document.createElement('canvas');
+                    var binctx = bincnv.getContext('2d');
+                    bincnv.width = this.width;
+                    bincnv.height = this.height;
+                    binctx.drawImage(binElement, 0, 0);
+                    var binData = binctx.getImageData(0, 0, bincnv.width, bincnv.height);
+                    var binFinal = binData.data;
+                    var binStr = "";
+                    for(var i = 0; i < binFinal.length; i += 4){
+                        if(binFinal[i + 3] === 255){
+                            if(invert){
+                                var brightness = 255 - (binFinal[i] + binFinal[i + 1] + binFinal[i + 2]) / 3;
+                            }else{
+                                var brightness =  (binFinal[i] + binFinal[i + 1] + binFinal[i + 2]) / 3;
+                            }
+                            if(brightness > 0 && brightness < 256){
+                                binStr += String.fromCharCode(brightness);
+                            }
+                        }
+                    }
+                    getId('textToBinOutput').innerHTML = '<textarea style="width:750px;height:300px;" id="binToTextOutput" display="block"></textarea>';
+                    getId('binToTextOutput').value = binStr;
+                    /*
+                    binFinal = null;
+                    binData = null;
+                    binctx = null;
+                    bincnv = null;
+                    binElement = null;
+                    URL.revokeObjectURL(binUrl);
+                    binUrl = null;
+                    binFile = null;
+                    */
+                    URL.revokeObjectURL(this.src);
+                }
+            },
+            rgbToText: function(invert){
+                var binFile = getId('textToBinDecodeImg').files[0];
+                var binUrl = URL.createObjectURL(binFile);
+                var binElement = new Image();
+                binElement.src = binUrl;
+                binElement.onload = function(){
+                    var bincnv = document.createElement('canvas');
+                    var binctx = bincnv.getContext('2d');
+                    bincnv.width = this.width;
+                    bincnv.height = this.height;
+                    binctx.drawImage(binElement, 0, 0);
+                    var binData = binctx.getImageData(0, 0, bincnv.width, bincnv.height);
+                    var binFinal = binData.data;
+                    var binStr = "";
+                    for(var i = 0; i < binFinal.length; i += 4){
+                        if(binFinal[i + 3] === 255){
+                            for(var j = 0; j < 3; j++){
+                                if(invert){
+                                    var brightness = 255 - binFinal[i + j];
+                                }else{
+                                    var brightness = binFinal[i + j];
+                                }
+                                if(brightness > 0 && brightness < 256){
+                                    binStr += String.fromCharCode(brightness);
+                                }
+                            }
+                        }
+                    }
+                    getId('textToBinOutput').innerHTML = '<textarea style="width:750px;height:300px;" id="binToTextOutput" display="block"></textarea>';
+                    getId('binToTextOutput').value = binStr;
+                    /*
+                    binFinal = null;
+                    binData = null;
+                    binctx = null;
+                    bincnv = null;
+                    binElement = null;
+                    URL.revokeObjectURL(binUrl);
+                    binUrl = null;
+                    binFile = null;
+                    */
+                    URL.revokeObjectURL(this.src);
+                }
             }
-            saveGame: function(){
-                apps.savemaster.vars.save('APP_Clk_save', JSON.stringify(apps.clicker.vars.game), 1);
-            }
-        }, 1, 'aOS Clicker', '/appicons/ds/CCl.png'
+        }, 0, 'textBinary', 'appicons/ds/CAM.png'
     );
     getId('aOSloadingInfo').innerHTML = 'Finalizing...';
-})
-*/
+});
 m('init finalizing');
 //function to open apps
 function toTop(appToNudge, dsktpClick){
@@ -12002,10 +12997,12 @@ function winmove(e){
         }
     }else{
         getId("winmove").style.display = "none";
-        apps[winmovecurrapp].appWindow.setDims(
-            winmoveOrX + (e.pageX - winmovex) * (1 / screenScale), winmoveOrY + (e.pageY - winmovey) * (1 / screenScale),
-            apps[winmovecurrapp].appWindow.windowH, apps[winmovecurrapp].appWindow.windowV
-        );
+        if(!mobileMode){
+            apps[winmovecurrapp].appWindow.setDims(
+                winmoveOrX + (e.pageX - winmovex) * (1 / screenScale), winmoveOrY + (e.pageY - winmovey) * (1 / screenScale),
+                apps[winmovecurrapp].appWindow.windowH, apps[winmovecurrapp].appWindow.windowV
+            );
+        }
         if(apps.settings.vars.performanceMode){
             getId('windowFrameOverlay').style.display = 'none';
         }
@@ -12023,7 +13020,7 @@ function winmoving(e){
     if(apps.settings.vars.performanceMode){
         getId('windowFrameOverlay').style.left = winmoveOrX + (e.pageX - winmovex) * (1 / screenScale) + 'px';
         getId('windowFrameOverlay').style.top = winmoveOrY + (e.pageY - winmovey) * (1 / screenScale) + 'px';
-    }else{
+    }else if(!mobileMode){
         apps[winmovecurrapp].appWindow.setDims(
             winmoveOrX + (e.pageX - winmovex) * (1 / screenScale), winmoveOrY + (e.pageY - winmovey) * (1 / screenScale),
             apps[winmovecurrapp].appWindow.windowH, apps[winmovecurrapp].appWindow.windowV
@@ -12091,6 +13088,9 @@ function icnmoving(e){
 }
 var tempwinrot = "";
 var tempwinrota = "";
+var tempwinrotmode = [1, 1];
+var winrotOrX = 0;
+var winrotOrY = 0;
 function winrot(e){
     if(e.currentTarget !== getId("winrot")){
         getId("winrot").style.display = "block";
@@ -12117,11 +13117,40 @@ function winrot(e){
             getId('windowFrameOverlay').style.width = winmoveOrX + 'px';
             getId('windowFrameOverlay').style.height = winmoveOrY + 'px';
         }
+        tempwinrotmode = [1, 1];
+        if(winmovex - apps[winmovecurrapp].appWindow.windowX < 20){
+            tempwinrotmode[0] = 0;
+            winrotOrX = apps[winmovecurrapp].appWindow.windowX;
+        }else if(winmovex - apps[winmovecurrapp].appWindow.windowX - apps[winmovecurrapp].appWindow.windowH > -20){
+            tempwinrotmode[0] = 2;
+        }
+        if(winmovey - apps[winmovecurrapp].appWindow.windowY < 20){
+            tempwinrotmode[1] = 0;
+            winrotOrY = apps[winmovecurrapp].appWindow.windowY;
+        }else if(winmovey - apps[winmovecurrapp].appWindow.windowY - apps[winmovecurrapp].appWindow.windowV > -20){
+            tempwinrotmode[1] = 2;
+        }
     }else{
         getId("winrot").style.display = "none";
+        var newWidth = apps[winmovecurrapp].appWindow.windowH;
+        var newHeight = apps[winmovecurrapp].appWindow.windowV;
+        var newLeft = apps[winmovecurrapp].appWindow.windowX;
+        var newTop = apps[winmovecurrapp].appWindow.windowY;
+        if(tempwinrotmode[0] === 2){
+            newWidth = winmoveOrX + (e.pageX - winmovex) * (1 / screenScale);
+        }else if(tempwinrotmode[0] === 0){
+            newWidth = winmoveOrX - (e.pageX - winmovex) * (1 / screenScale);
+            newLeft = winrotOrX + (e.pageX - winmovex) * (1 / screenScale);
+        }
+        if(tempwinrotmode[1] === 2){
+            newHeight = winmoveOrY + (e.pageY - winmovey) * (1 / screenScale);
+        }else if(tempwinrotmode[1] === 0){
+            newHeight = winmoveOrY - (e.pageY - winmovey) * (1 / screenScale);
+            newTop = winrotOrY + (e.pageY - winmovey) * (1 / screenScale)
+        }
         apps[winmovecurrapp].appWindow.setDims(
-            apps[winmovecurrapp].appWindow.windowX, apps[winmovecurrapp].appWindow.windowY,
-            winmoveOrX + (e.pageX - winmovex) * (1 / screenScale), winmoveOrY + (e.pageY - winmovey) * (1 / screenScale)
+            newLeft, newTop,
+            newWidth, newHeight
         );
         if(apps.settings.vars.performanceMode){
             getId('windowFrameOverlay').style.display = 'none';
@@ -12133,13 +13162,31 @@ function winrot(e){
 }
 getId("winrot").addEventListener("click", winrot);
 function winroting(e){
+    var newWidth = apps[winmovecurrapp].appWindow.windowH;
+    var newHeight = apps[winmovecurrapp].appWindow.windowV;
+    var newLeft = apps[winmovecurrapp].appWindow.windowX;
+    var newTop = apps[winmovecurrapp].appWindow.windowY;
+    if(tempwinrotmode[0] === 2){
+        newWidth = winmoveOrX + (e.pageX - winmovex) * (1 / screenScale);
+    }else if(tempwinrotmode[0] === 0){
+        newWidth = winmoveOrX - (e.pageX - winmovex) * (1 / screenScale);
+        newLeft = winrotOrX + (e.pageX - winmovex) * (1 / screenScale);
+    }
+    if(tempwinrotmode[1] === 2){
+        newHeight = winmoveOrY + (e.pageY - winmovey) * (1 / screenScale);
+    }else if(tempwinrotmode[1] === 0){
+        newHeight = winmoveOrY - (e.pageY - winmovey) * (1 / screenScale);
+        newTop = winrotOrY + (e.pageY - winmovey) * (1 / screenScale)
+    }
     if(apps.settings.vars.performanceMode){
-        getId('windowFrameOverlay').style.width = winmoveOrX + (e.pageX - winmovex) * (1 / screenScale) + 'px';
-        getId('windowFrameOverlay').style.height = winmoveOrY + (e.pageY - winmovey) * (1 / screenScale) + 'px';
+        getId('windowFrameOverlay').style.left = newLeft + 'px';
+        getId('windowFrameOverlay').style.top = newTop + 'px';
+        getId('windowFrameOverlay').style.width = newWidth + 'px';
+        getId('windowFrameOverlay').style.height = newHeight + 'px';
     }else{
         apps[winmovecurrapp].appWindow.setDims(
-            apps[winmovecurrapp].appWindow.windowX, apps[winmovecurrapp].appWindow.windowY,
-            winmoveOrX + (e.pageX - winmovex) * (1 / screenScale), winmoveOrY + (e.pageY - winmovey) * (1 / screenScale)
+            newLeft, newTop,
+            newWidth, newHeight
         );
     }
     //getId(winmoveSelect).style.transform = "rotateY(" + (e.pageX - winmovex) + "deg)rotateX(" + (e.pageY - winmovey) + "deg)";
@@ -12375,13 +13422,41 @@ var baseCtx = {
         }]
     ],
     icnXXX: [
-        [' ' + lang('ctxMenu', 'showApp'), function(arg){
-            openapp(apps[arg], 'tskbr');
+        [function(arg){
+            if(apps[arg].appWindow.appIcon){
+                return ' ' + lang('ctxMenu', 'showApp');
+            }else{
+                return ' ' + lang('ctxMenu', 'openApp');
+            }
+        }, function(arg){
+            if(apps[arg].appWindow.appIcon){
+                openapp(apps[arg], 'tskbr');
+            }else{
+                openapp(apps[arg], 'dsktp');
+            }
         }, 'ctxMenu/beta/window.png'],
-        [' ' + lang('ctxMenu', 'hideApp'), function(arg){
+        [function(arg){
+            if(apps[arg].appWindow.appIcon){
+                return ' ' + lang('ctxMenu', 'hideApp');
+            }else{
+                return '-' + lang('ctxMenu', 'hideApp');
+            }
+        }, function(arg){
             apps[arg].signalHandler('shrink');
         }, 'ctxMenu/beta/minimize.png'],
-        [' ' + lang('ctxMenu', 'closeApp'), function(arg){
+        [function(arg){
+            if(pinnedApps.indexOf(arg) === -1){
+                return '+Pin App';
+            }else{
+                return '+Unpin App';
+            }
+        }, function(arg){
+            pinApp(arg);
+            if(pinnedApps.indexOf(arg) === -1 && !apps[arg].appWindow.appIcon){
+                getId('icn_' + arg).style.display = 'none';
+            }
+        }, 'ctxMenu/beta/minimize.png'],
+        ['+' + lang('ctxMenu', 'closeApp'), function(arg){
             apps[arg].signalHandler('close');
         }, 'ctxMenu/beta/x.png']
     ],
@@ -12429,7 +13504,7 @@ getId("monitor").setAttribute('oncontextmenu', 'if(event.target !== getId("ctxMe
 
 //OLD function to fit monitor to window size
 /*
-fitWindow = function(){
+ function(){
     apps.settings.vars.sH();
     apps.settings.vars.sV();
     if(window.innerWidth < 1050 * apps.settings.vars.sX || window.innerHeight < 600 * apps.settings.vars.sV){
@@ -12496,7 +13571,7 @@ function fitWindow(){
     getId("tskbrAero").style.height = '';
     getId('tskbrAero').style.transform = '';
     getId('tskbrAero').style.transformOrigin = '';
-    getId("icons").style.width = window.innerWidth * (1 / numberOfScreenScale) + "px";
+    //getId("icons").style.width = window.innerWidth * (1 / numberOfScreenScale) + "px";
     //doLog(perfCheck('fitWindow') + '&micro;s to fit aOS to window');
     
     // taskbar position checking
@@ -12560,6 +13635,7 @@ function fitWindow(){
             getId('taskbar').style.transform = '';
             getId('taskbar').style.width = getId('monitor').style.width;
     }
+    checkMobileSize();
 }
 function fitWindowOuter(){
     perfStart('fitWindow');
@@ -12578,7 +13654,7 @@ function fitWindowOuter(){
     //getId("taskbar").style.top = window.outerHeight - 30 + "px";
     getId("tskbrAero").style.backgroundPosition = "20px " + (-1 * (window.outerHeight * (1 / numberOfScreenScale)) + 50) + "px";
     getId("tskbrAero").style.width = window.outerWidth * (1 / numberOfScreenScale) + 40 + "px";
-    getId("icons").style.width = window.outerWidth * (1 / numberOfScreenScale) + "px";
+    //getId("icons").style.width = window.outerWidth * (1 / numberOfScreenScale) + "px";
     //doLog(perfCheck('fitWindow') + '&micro;s to fit aOS to screen');
     
     // taskbar position checking
@@ -12631,6 +13707,7 @@ function fitWindowOuter(){
             getId('taskbar').style.transform = '';
             getId('taskbar').style.width = getId('monitor').style.width;
     }
+    checkMobileSize();
 }
 function fitWindowRes(newmonX, newmonY){
     perfStart('fitWindow');
@@ -12649,7 +13726,7 @@ function fitWindowRes(newmonX, newmonY){
     //getId("taskbar").style.top = newmonY - 30 + "px";
     getId("tskbrAero").style.backgroundPosition = "20px " + (-1 * (newmonY * (1 / numberOfScreenScale)) + 50) + "px";
     getId("tskbrAero").style.width = newmonX * (1 / numberOfScreenScale) + 40 + "px";
-    getId("icons").style.width = newmonX * (1 / numberOfScreenScale) + "px";
+    //getId("icons").style.width = newmonX * (1 / numberOfScreenScale) + "px";
     //doLog(perfCheck('fitWindow') + '&micro;s to fit aOS to custom size');
     
     // taskbar position checking
@@ -12702,6 +13779,7 @@ function fitWindowRes(newmonX, newmonY){
             getId('taskbar').style.transform = '';
             getId('taskbar').style.width = getId('monitor').style.width;
     }
+    checkMobileSize();
 }
 var sessionStorageSupported = 1;
 if(!sessionStorage){
