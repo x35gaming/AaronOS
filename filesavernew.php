@@ -1,5 +1,5 @@
 <?php
-    if(isset($_POST['c']) && strpos($_SERVER['HTTP_REFERER'], 'https://'.$_SERVER['SERVER_NAME']) === 0){ //aaron-os-mineandcraft12.c9.io'){
+    if(isset($_POST['c']) && (strpos($_SERVER['HTTP_REFERER'], $_SERVER['SERVER_NAME']) !== FALSE || explode(':', $_SERVER['HTTP_HOST'])[0] === "localhost")){ //aaron-os-mineandcraft12.c9.io'){
         function error($errno, $errstr){
             echo "Error - [" + $errno + '] ' + $errstr;
         }
@@ -108,7 +108,7 @@
                     }
                 }
             }else{
-                echo "Error - User ID malformed, or your user ID is incorrect.";
+                echo "Error - User ID malformed, or your user ID is incorrect. ".$_POST['k'].', '.$_COOKIE['keyword'];
                 die();
             }
         }else{

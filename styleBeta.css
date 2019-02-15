@@ -11,25 +11,30 @@
     width:16px;
     background-color:#555;
     box-shadow:inset 0 0 10px #CCC;
+    cursor:url(cursors/beta/default.png) 3 3, default;
 }
 ::-webkit-scrollbar-corner{
     background-color:#555;
     box-shadow:inset 0 0 10px #CCC;
+    cursor:url(cursors/beta/default.png) 3 3, default;
 }
 ::-webkit-resizer{
     border-radius:8px;
     background-color:#CCC;
     box-shadow:inset 0 0 10px #555;
+    cursor:url(cursors/beta/default.png) 3 3, default;
 }
 ::-webkit-scrollbar-thumb{
     border-radius:8px;
     background-color:#CCC;
     box-shadow:inset 0 0 10px #555;
+    cursor:url(cursors/beta/default.png) 3 3, default;
 }
 ::-webkit-scrollbar-button{
     border-radius:8px;
     background-color:#CCC;
     box-shadow:inset 0 0 10px #555;
+    cursor:url(cursors/beta/default.png) 3 3, default;
 }
     .darkMode ::-webkit-scrollbar{
         width:16px;
@@ -140,6 +145,10 @@ div{
     position:absolute;
     overflow:hidden;
 }
+    #weScreen div{
+        position:relative;
+        overflow:hidden;
+    }
 #mastersaveframediv{
     display:none;
 }
@@ -166,6 +175,9 @@ div{
     background-position:0 0;
     font-family:sans-serif;
     transform-origin:0 0;
+    
+    /* width of window borders */
+    --windowBorderWidth:3px;
 }
 	#desktop{
 		top:0;
@@ -254,7 +266,7 @@ div{
                 height:100%;
                 background-image:url(winimg.png);
             }
-            .winRot{
+            .winRes{
                 height:100%;
                 bottom:0;
                 width:100%;
@@ -264,9 +276,9 @@ div{
                 font-family:Courier, monospace;
                 font-size:16px;
                 top:0px;
-                left:3px;
+                left:var(--windowBorderWidth);
                 padding-left:23px;
-                width:519px;
+                width:calc(100% - 23px - var(--windowBorderWidth) - var(--windowBorderWidth));
                 height:21px;
                 text-shadow:0px 0px 2px #000;
                 color:#FFF;
@@ -277,10 +289,10 @@ div{
                     padding-left:69px;
                 }
             .winHTML{
-                width:calc(100% - 9px);
-                height:276px;
-                bottom:3px;
-                left:3px;
+                width:calc(100% - 3px - var(--windowBorderWidth) - var(--windowBorderWidth));
+                height:calc(100% - 21px - var(--windowBorderWidth));
+                bottom:var(--windowBorderWidth);
+                left:var(--windowBorderWidth);
                 background-color:#FFF;
                 border-bottom-left-radius: 5px;
                 border-bottom-right-radius: 5px;
@@ -295,7 +307,7 @@ div{
                 }
                 .winHTML.noPadding{
                     padding-left:0;
-                    width:calc(100% - 6px);
+                    width:calc(100% - var(--windowBorderWidth) - var(--windowBorderWidth));
                 }
                     .mobileMode .winHTML.noPadding{
                         width:100% !important;
@@ -335,19 +347,105 @@ div{
                     .darkMode #FILtbl tr:hover{
                         background-color:#555;
                     }
-                #FIL2tbl td{
-                    border-top:1px solid #000;
+                    
+                #FIL2tbl div{
+                    font-family:aosProFont, monospace;
+                    position:relative;
+                    white-space:nowrap;
                     /*cursor:url(cursors/pointer.png) 9 3, pointer;*/
                 }
-                    .darkMode #FIL2tbl td{
-                        border-top:1px solid #FFF;
-                    }
-                #FIL2tbl tr:hover{
+                #FIL2tbl div:hover{
                     background-color:#AAA;
                 }
-                    .darkMode #FIL2tbl tr:hover{
+                    .darkMode #FIL2tbl div:hover{
                         background-color:#555;
                     }
+                    
+                #FIL2tbl img{
+                    display:inline-block;
+                    margin-top:2px;
+                    margin-bottom:-2px;
+                    margin-left:3px;
+                    width:10px;
+                    height:10px;
+                }
+                    .darkMode #FIL2tbl img{
+                        filter:invert(1);
+                    }
+                
+                #FIL2tbl .FIL2aosAppIcon{
+                    width:16px;
+                    height:16px;
+                    margin-top:0;
+                    margin-bottom:-5px;
+                    margin-left:1px;
+                }
+                    .darkMode #FIL2tbl .FIL2aosAppIcon{
+                        filter:none;
+                    }
+                
+                .FIL2viewCompact div{
+                    font-size:12px;
+                    width:148px;
+                    height:18px;
+                    line-height:18px;
+                    display:inline-block;
+                    margin-left:3px;
+                    margin-top:3px;
+                    margin-bottom:-4px;
+                    border:1px solid #000;
+                    padding:1px;
+                }
+                    .darkMode .FIL2viewCompact div{
+                        border:1px solid #FFF;
+                    }
+                
+                .FIL2viewSmall div{
+                    font-size:12px;
+                    width:298px;
+                    height:18px;
+                    line-height:18px;
+                    display:inline-block;
+                    margin-left:3px;
+                    margin-top:3px;
+                    margin-bottom:-4px;
+                    border:1px solid #000;
+                    padding:1px;
+                }
+                    .darkMode .FIL2viewSmall div{
+                        border:1px solid #FFF;
+                    }
+                
+                .FIL2viewMedium div{
+                    font-size:12px;
+                    width:calc(100% - 8px);
+                    height:14px;
+                    line-height:14px;
+                    display:block;
+                    margin-left:3px;
+                    margin-top:1px;
+                    padding:1px;
+                }
+                    #FIL2tbl.FIL2viewMedium .FIL2aosAppIcon{
+                        margin-top:-1px;
+                        margin-bottom:-5px;
+                    }
+                
+                .FIL2viewLarge div{
+                    font-size:12px;
+                    width:calc(100% - 10px);
+                    height:18px;
+                    line-height:18px;
+                    display:block;
+                    margin-left:3px;
+                    margin-top:3px;
+                    border:1px solid #000;
+                    padding:1px;
+                }
+                    .darkMode .FIL2viewLarge div{
+                        border:1px solid #FFF;
+                    }
+                
                 #tMgMemTable{
                     width: 100%;
                     font-family:aosProFont, monospace;
@@ -429,7 +527,7 @@ div{
                 }
             .winExit{
                 height:16px;
-                right:3px;
+                right:var(--windowBorderWidth);
                 width:16px;
                 padding-left:2px;
                 font-family:aosProFont, Courier;
@@ -455,7 +553,7 @@ div{
                 background-color:#C00;
             }
                 .leftCaptionButtons .winExit{
-                    left:3px;
+                    left:var(--windowBorderWidth);
                     right:initial;
                 }
             .winShrink, .winBig, .winFld{
@@ -485,31 +583,31 @@ div{
                 background-color:#090;
             }
             .winShrink{
-                right:49px;
+                right:calc(46px + var(--windowBorderWidth));
             }
                 .leftCaptionButtons .winShrink{
-                    left:49px;
+                    left:calc(46px + var(--windowBorderWidth));
                     right:initial;
                 }
             .winBig{
-                right:26px;
+                right:calc(23px + var(--windowBorderWidth));
             }
                 .mobileMode .winBig{
                     display:none !important;
                 }
                 .leftCaptionButtons .winBig{
-                    left:26px;
+                    left:calc(23px + var(--windowBorderWidth));
                     right:initial;
                 }
             .winFld{
-                left: 3px;
+                left: var(--windowBorderWidth);
                 line-height:24px;
             }
                 .mobileMode .winFld{
                     display:none !important;
                 }
                 .leftCaptionButtons .winFld{
-                    right:3px;
+                    right:var(--windowBorderWidth);
                     left:initial;
                 }
             .winShrink, .winBig, .winExit , .winFld{
@@ -587,7 +685,7 @@ div{
         display:none;
         /*cursor:url(cursors/move.png) 14 14, move;*/
     }
-    #winrot{
+    #winres{
         left:0;
         top:0;
         width:100%;
@@ -789,7 +887,7 @@ div{
     font-family:monospace;*/
     /*cursor:url(cursors/loadLight.png) 16 16, wait;*/
 }
-#aOSisLoading div{
+#aOSisLoadingDiv{
     /*
     top:10px;
     width:100%;
@@ -810,6 +908,35 @@ div{
     #aOSloadingInfo{
         font-family:monospace;
         font-size:12px;
+        line-height:20px;
+        width:0;
+        min-width:0;
+        max-width:100%;
+        height:20px;
+        min-height:20px;
+        max-height:20px;
+        overflow:visible;
+        margin-top:0;
+        margin-bottom:0;
+        color:#FFF;
+        background:#0A0;
+        position:relative;
+        display:inline-block;
+        white-space:nowrap;
+        box-shadow:0 -3px 0 #0A0;
+    }
+    #aOSloadingInfoDiv{
+        width:75%;
+        min-width:75%;
+        max-width:75%;
+        height:20px;
+        min-height:20px;
+        max-height:20px;
+        background:#000;
+        position:relative;
+        display:inline-block;
+        text-align:left;
+        overflow:hidden;
     }
     #bootCrashTest{
         padding:3px;
@@ -1005,10 +1132,10 @@ div{
     height:1em;
 }
 #notifContent{
-    bottom:2px;
+    bottom:calc(10px + 1em);
     left:2px;
     width:calc(100% - 56px);
-    height:calc(100% - 2em - 4px);
+    height:calc(100% - 3em - 12px);
     overflow:auto;
 }
 #notifButtons{
@@ -1043,6 +1170,9 @@ div{
     */
     opacity:1 !important;
 }
+.flowDesktop.mobileMode .window{
+    width:50% !important; height:50% !important;
+}
 .flowDesktop .window.closedWindow{
     width: 0 !important;
     height: 0 !important;
@@ -1053,7 +1183,7 @@ div{
 .flowDesktop #win_startMenu_top, .flowDesktop #win_nora_top{
     display:none !important;
 }
-.flowDesktop .winHTML, .flowDesktop .winCap, .flowDesktop .winRot{
+.flowDesktop .winHTML, .flowDesktop .winCap, .flowDesktop .winRes{
     pointer-events:none !important;
 }
 .flowDesktop .winShrink, .flowDesktop .winFld, .flowDesktop .winBig{
@@ -1063,6 +1193,9 @@ div{
 .flowDesktop .app{
     opacity:0 !important;
     pointer-events:none !important;
+}
+.flowDesktop .winCap{
+    opacity:1 !important;
 }
 
 #widgetMenu .winExit, #notifWindow .winExit{

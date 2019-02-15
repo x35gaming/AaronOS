@@ -10,9 +10,10 @@
     
     <link rel="icon" href="faviconBeta.ico" type="image/x-icon">
     <link rel="manifest" href="manifest.json">
+    <style id="windowBorderStyle"></style>
     <style id="cursorStyle"></style>
     <style id="aosCustomStyle"></style>
-    <style id="mobileStyle"></style>
+
     <!--
     <script defer src="html2canvas.js"></script>
     html2canvas(document.body, {onrendered:function(canvas){getId('winjsCa').style.backgroundImage = 'url(' + canvas.toDataURL('image/png') + ')'}})
@@ -69,12 +70,12 @@
         <!-- old window move/resize and icon move elements
         <div id="winmove" onclick="winmove(event)" onmousemove="winmoving(event)"></div>
         <div id="icomove" onclick="icomove(event)" onmousemove="icomoving(event)"></div>
-        <div id="winrot" onclick="winrot(event)" onmousemove="winroting(event)"></div>
+        <div id="winres" onclick="winres(event)" onmousemove="winresing(event)"></div>
         -->
         <div id="winmove" class="cursorOpenHand" onmouseup="winmove(event)" onmousemove="winmoving(event)"></div>
         <div id="icomove" class="cursorOpenHand" onclick="icomove(event)" onmousemove="icomoving(event)"></div>
         <div id="icnmove" class="cursorOpenHand" onclick="icnmove(event)" onmousemove="icnmoving(event)"></div>
-        <div id="winrot" class="cursorOpenHand" onmouseup="winrot(event)" onmousemove="winroting(event)"></div>
+        <div id="winres" class="cursorOpenHand" onmouseup="winres(event)" onmousemove="winresing(event)"></div>
         <div id="windowFrameOverlay"></div>
         <div id="taskbar">
             <div id="tskbrAero" class="winAero"></div>
@@ -107,10 +108,12 @@
             }
         ?>
         <div id="aOSisLoading" class="cursorLoadLight">
-            <div>
+            <div id="aOSisLoadingDiv">
                 <h1>AaronOS</h1>
                 <hr>
-                <span id="aOSloadingInfo">Initializing...</span><br><br>
+                <div id="aOSloadingInfoDiv">
+                    <div id="aOSloadingInfo" class="liveElement" liveVar="finishedWaitingCodes / totalWaitingCodes * 100 + '%'" liveTarget="style.width">Initializing...</div>
+                </div><br><br>
                 &nbsp;<br>
                 <a href="?safeMode"><button>Safe Mode</button></a><br><br>
                 <button onclick="document.getElementById('aOSisLoading').style.display = 'none';document.getElementById('aOSloadingBg').style.display = 'none';document.getElementById('desktop').style.display = '';document.getElementById('taskbar').style.display = '';">Force Boot</button><br><br>
@@ -138,8 +141,14 @@
         $changeKey = $_GET['changeKey'];
         $changePass = $_GET['changePass'];
     }
+    echo '<script defer>window.lineOfTheDay = ';
+    require 'lotd.php';
+    echo '</script>';
     echo '<script defer>';
-    require 'fileloader.php';
+    require 'filepreloaderBeta.php';
+    echo '</script>';
+    echo '<script>';
+    require 'test_ssl.php';
     echo '</script>';
 ?>
 </html>
